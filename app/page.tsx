@@ -301,7 +301,7 @@ export default function Home() {
         date: date,
         day: date.getDate(),
         isClaimed: dailyCheckInStatus[date.toISOString().split('T')[0]] || false,
-        reward: 500 * (i + 1)
+        reward: 5000 * (i + 1)
       };
     });
   }, [dailyCheckInStatus]);

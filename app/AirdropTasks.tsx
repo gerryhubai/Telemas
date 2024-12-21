@@ -18,7 +18,7 @@ export default function AirdropTasks() {
 
   useEffect(() => {
     const checkWalletConnection = () => {
-      if (tonConnectUI.account?.address) {
+      if (tonConnectUI.connected && tonConnectUI.account?.address) {
         setIsWalletConnected(true);
         setWalletAddress(tonConnectUI.account.address);
       } else {
@@ -45,7 +45,7 @@ export default function AirdropTasks() {
   }, [tonConnectUI]);
 
   const handleSendTransaction = async () => {
-    if (!isWalletConnected) {
+    if (!tonConnectUI.connected) {
       setError('Please connect your wallet first');
       return;
     }
@@ -54,28 +54,31 @@ export default function AirdropTasks() {
     setError(null);
 
     try {
+      // Convert 0.2 TON to nanotons
+      const amountInNanotons = '200000000'; // 0.2 TON = 200,000,000 nanotons
+
       const transaction = {
-        validUntil: Date.now() + 5 * 60 * 1000,
+        validUntil: Math.floor(Date.now() / 1000) + 300, // 5 minutes from now
         messages: [
           {
             address: dummyTonAddress,
-            amount: TonWeb.utils.toNano('0.2').toString(),
+            amount: amountInNanotons,
           },
         ],
       };
 
+      console.log('Sending transaction:', transaction);
       const result = await tonConnectUI.sendTransaction(transaction);
+      console.log('Transaction result:', result);
 
-      if (result.boc) {
-        const bocCellBytes = await TonWeb.boc.Cell.oneFromBoc(
-          TonWeb.utils.base64ToBytes(result.boc)
-        ).hash();
-        console.log('Transaction hash:', bocCellBytes);
+      if (result) {
         setIsTransactionCompleted(true);
+        setError(null);
       } else {
         throw new Error('Transaction failed to process');
       }
     } catch (err) {
+      console.error('Transaction error:', err);
       setError(err instanceof Error ? err.message : 'Transaction failed');
     } finally {
       setIsLoading(false);
@@ -112,7 +115,7 @@ export default function AirdropTasks() {
             <p className="text-sm text-gray-200">
               Connect your wallet to participate in the holiday airdrop
             </p>
-            {!isWalletConnected && <TonConnectButton />}
+            <TonConnectButton />
           </div>
         </div>
 

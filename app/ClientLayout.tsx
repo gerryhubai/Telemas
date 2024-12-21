@@ -81,6 +81,10 @@ const ClientLayout = ({ children }: { children: React.ReactNode }) => {
       <CheckSquare size={24} />
       <span className="text-lg">Tasks</span>
     </NavLink>
+    <NavLink href="/airdrop">
+      🥇
+      <span className="text-lg">Airdrop</span>
+    </NavLink>
   </nav>
 </footer>
 

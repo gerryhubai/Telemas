@@ -5,38 +5,58 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Bell, Users, CheckSquare } from 'lucide-react';
 
-const NavLink = ({ href, children }: { href: string; children: React.ReactNode }) => {
+const NavLink = ({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) => {
   const pathname = usePathname();
   const isActive = pathname === href;
+
   return (
-    <Link href={href} className={`flex items-center space-x-2 ${isActive ? 'text-yellow-400' : 'text-white hover:text-yellow-200'}`}>
-      {children}
+    <Link
+      href={href}
+      className={`flex items-center space-x-2 ${isActive ? 'text-yellow-400' : 'text-white hover:text-yellow-200'}`}
+    >
+      {icon}
+      <span className="text-lg">{label}</span>
     </Link>
+  );
+};
+
+const Footer = () => {
+  return (
+    <footer className="bg-red-900 text-white py-4 px-6 flex justify-between items-center fixed bottom-0 left-0 right-0 z-30">
+      <div className="flex items-center space-x-4">
+        <NavLink
+          href="/dailychest"
+          icon={<img src="telemas-treasure-chest.png" alt="Quest Chest" className="w-8 h-8" />}
+          label=""
+        />
+        <Link href="/">
+          <span className="font-bold text-4xl cursor-pointer">🎅</span>
+        </Link>
+      </div>
+      <nav className="flex space-x-8">
+        <NavLink href="/friends" icon={<Users size={24} />} label="Friends" />
+        <NavLink href="/tasks" icon={<CheckSquare size={24} />} label="Tasks" />
+        <NavLink href="/airdrop" icon={<span>🥇</span>} label="Airdrop" />
+      </nav>
+    </footer>
   );
 };
 
 const ClientLayout = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
   const isMainPage = pathname === '/';
-  
-  // Track loading state to avoid showing access denied prematurely
+
   const [isLoading, setIsLoading] = useState(true);
   const [isAllowed, setIsAllowed] = useState(false);
 
   useEffect(() => {
     const userAgent = navigator.userAgent || navigator.vendor;
-
-    // Check if the user is on a mobile device
     const isMobile = /android|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
 
-    // Set access permission based on mobile detection
     setIsAllowed(isMobile);
-    
-    // Once the check is done, stop loading
     setIsLoading(false);
   }, []);
 
-  // While checking, show a loading screen to avoid flashing Access Denied
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">
@@ -45,7 +65,6 @@ const ClientLayout = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  // If the user is not allowed (not on mobile), show Access Denied
   if (!isAllowed) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100 text-center">
@@ -57,37 +76,10 @@ const ClientLayout = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  // If the user is on mobile, render the app
   return (
     <div className="flex flex-col min-h-screen">
-      <main className={`flex-grow ${isMainPage ? '' : 'overflow-auto pb-20'}`}>
-        {children}
-      </main>
-      <footer className="bg-red-900 text-white py-4 px-6 flex justify-between items-center fixed bottom-0 left-0 right-0 z-30">
-  <div className="flex items-center space-x-4">
-    <NavLink href="/dailychest">
-    <img src="telemas-treasure-chest.png" alt="Quest Chest" className="w-8 h-8" />
-      </NavLink>
-    <Link href="/">
-      <span className="font-bold text-4xl cursor-pointer">🎅</span>
-    </Link>
-  </div>
-  <nav className="flex space-x-8">
-    <NavLink href="/friends">
-      <Users size={24} />
-      <span className="text-lg">Friends</span>
-    </NavLink>
-    <NavLink href="/tasks">
-      <CheckSquare size={24} />
-      <span className="text-lg">Tasks</span>
-    </NavLink>
-    <NavLink href="/airdrop">
-      🥇
-      <span className="text-lg">Airdrop</span>
-    </NavLink>
-  </nav>
-</footer>
-
+      <main className={`flex-grow ${isMainPage ? '' : 'overflow-auto pb-20'}`}>{children}</main>
+      <Footer />
     </div>
   );
 };

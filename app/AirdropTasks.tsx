@@ -1,56 +1,82 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { TonConnectButton, useTonWallet, useTonConnect } from '@tonconnect/ui-react';
+import { TonConnectButton } from '@tonconnect/ui-react';
+import { useTonConnectUI } from '@tonconnect/ui-react';
+import TonWeb from 'tonweb';
 
 export default function AirdropTasks() {
-  const wallet = useTonWallet();
-  const tonConnect = useTonConnect();
+  const [tonConnectUI] = useTonConnectUI();
   const [isWalletConnected, setIsWalletConnected] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [isTransactionCompleted, setIsTransactionCompleted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const dummyTonAddress = 'EQBvNsQHv9sXQ6KQFSLM2fKmnbh0p7Zh65_JSmC38t-x9f8h'; // Replace with actual address
+  const dummyTonAddress = 'EQBvNsQHv9sXQ6KQFSLM2fKmnbh0p7Zh65_JSmC38t-x9f8h';
 
   // Handle wallet connection status
   useEffect(() => {
-    if (wallet) {
-      setIsWalletConnected(true);
-      setWalletAddress(wallet.address);
-    } else {
-      setIsWalletConnected(false);
-      setWalletAddress(null);
-    }
-  }, [wallet]);
+    const checkWalletConnection = () => {
+      if (tonConnectUI.account?.address) {
+        setIsWalletConnected(true);
+        setWalletAddress(tonConnectUI.account.address);
+      } else {
+        setIsWalletConnected(false);
+        setWalletAddress(null);
+      }
+    };
+
+    checkWalletConnection();
+
+    const unsubscribe = tonConnectUI.onStatusChange((wallet) => {
+      if (wallet) {
+        setIsWalletConnected(true);
+        setWalletAddress(wallet.account.address);
+      } else {
+        setIsWalletConnected(false);
+        setWalletAddress(null);
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [tonConnectUI]);
 
   // Handle sending a transaction
   const handleSendTransaction = async () => {
-    if (!wallet) {
+    if (!isWalletConnected) {
       console.error('Wallet not connected');
       return;
     }
 
     try {
       const transaction = {
-        to: dummyTonAddress,
-        value: '200000000', // NanoTON (0.2 TON)
-        data: '', // Optional: include any data if needed
-      };
-
-      await tonConnect.sendTransaction({
-        validUntil: Math.floor(Date.now() / 1000) + 600, // Transaction expiration (optional)
+        validUntil: Date.now() + 5 * 60 * 1000, // 5 minutes expiration
         messages: [
           {
-            address: transaction.to,
-            amount: transaction.value,
-            payload: transaction.data, // Optional payload
+            address: dummyTonAddress,
+            amount: (0.2 * 1e9).toString(), // 0.2 TON in nanoTON
           },
         ],
-      });
+      };
 
-      setIsTransactionCompleted(true);
+      const result = await tonConnectUI.sendTransaction(transaction);
+
+      if (result.boc) {
+        // Verify transaction
+        const bocCellBytes = await TonWeb.boc.Cell.oneFromBoc(
+          TonWeb.utils.base64ToBytes(result.boc)
+        ).hash();
+
+        console.log('Transaction hash:', bocCellBytes);
+        setIsTransactionCompleted(true);
+      } else {
+        throw new Error('Transaction did not return a valid BOC.');
+      }
     } catch (error) {
       console.error('Transaction failed:', error);
+      setError(error instanceof Error ? error.message : 'Transaction failed');
     }
   };
 
@@ -59,11 +85,9 @@ export default function AirdropTasks() {
       <div className="text-2xl font-bold mb-4">Airdrop Tasks 🎁</div>
       <ul className="space-y-4">
         {/* Connect TON Wallet Task */}
-        <li
-          className={`p-4 rounded-lg bg-opacity-30 bg-white flex items-center justify-between ${
-            isWalletConnected ? 'opacity-75' : ''
-          }`}
-        >
+        <li className={`p-4 rounded-lg bg-opacity-30 bg-white flex items-center justify-between ${
+          isWalletConnected ? 'opacity-75' : ''
+        }`}>
           <div>
             <h3 className="font-semibold text-lg">Connect TON Wallet</h3>
             <p className="text-sm text-gray-300">
@@ -78,11 +102,9 @@ export default function AirdropTasks() {
         </li>
 
         {/* Make a TON Transaction Task */}
-        <li
-          className={`p-4 rounded-lg bg-opacity-30 bg-white flex items-center justify-between ${
-            isTransactionCompleted ? 'opacity-75' : ''
-          }`}
-        >
+        <li className={`p-4 rounded-lg bg-opacity-30 bg-white flex items-center justify-between ${
+          isTransactionCompleted ? 'opacity-75' : ''
+        }`}>
           <div>
             <h3 className="font-semibold text-lg">Make a TON Transaction</h3>
             <p className="text-sm text-gray-300">

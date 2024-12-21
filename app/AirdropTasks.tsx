@@ -7,8 +7,6 @@ import { Gift, Wallet } from 'lucide-react';
 import WebApp, { WebAppUser } from '@twa-dev/sdk'; // Import TWA SDK
 import TonWeb from 'tonweb';
 
-import WebApp, { WebAppUser } from '@twa-dev/sdk';
-
 interface UserData {
   id: number;
   first_name: string;

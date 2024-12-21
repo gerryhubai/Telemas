@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { FaChevronRight, FaTimes, FaCheckCircle } from 'react-icons/fa';
+import AirdropTasks from '../AirdropTasks';
 
 interface Task {
   id: number;
@@ -212,6 +213,7 @@ export default function Task() {
           </div>
         </div>
       )}
+      <AirdropTasks />
     </main>
   );
 }

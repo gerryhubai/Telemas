@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { TonConnectButton } from '@tonconnect/ui-react';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import { Gift, Wallet } from 'lucide-react';
-import { WebApp } from '@twa-dev/sdk'; // Import TWA SDK
+import WebApp from '@twa-dev/sdk'; // Import TWA SDK
 import TonWeb from 'tonweb';
 
 interface UserData {

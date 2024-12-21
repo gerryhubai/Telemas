@@ -1,46 +1,29 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { TonConnectButton, TonConnectUI } from '@tonconnect/ui-react';
-import { sendTransaction } from './tonUtils'; // Utility function for TON transactions
+import { TonConnectButton, useTonWallet } from '@tonconnect/ui-react';
+import { sendTransaction } from './tonUtils'; // Ensure this utility is correctly implemented
 
 export default function AirdropTasks() {
-  const [isWalletConnected, setIsWalletConnected] = useState(false);
+  const wallet = useTonWallet();
   const [isTransactionCompleted, setIsTransactionCompleted] = useState(false);
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
 
   const dummyTonAddress = 'EQBvNsQHv9sXQ6KQFSLM2fKmnbh0p7Zh65_JSmC38t-x9f8h'; // Replace with actual address later
 
-  // TonConnectUI instance
-  const tonConnectUI = new TonConnectUI();
-
-  useEffect(() => {
-    tonConnectUI.onStatusChange((status) => {
-      if (status === 'connected') {
-        setIsWalletConnected(true);
-        setWalletAddress(tonConnectUI.wallet?.address || null);
-      } else {
-        setIsWalletConnected(false);
-        setWalletAddress(null);
-      }
-    });
-
-    return () => {
-      tonConnectUI.offStatusChange(); // Clean up the listener
-    };
-  }, [tonConnectUI]);
-
   const handleSendTransaction = async () => {
-    try {
-      if (!walletAddress) return;
+    if (!wallet) {
+      console.error('Wallet not connected');
+      return;
+    }
 
+    try {
       const transaction = {
         to: dummyTonAddress,
         value: 0.2, // TON
         message: 'Airdrop Task Completion',
       };
 
-      await sendTransaction(transaction, tonConnectUI);
+      await sendTransaction(transaction);
       setIsTransactionCompleted(true);
     } catch (error) {
       console.error('Transaction failed:', error);
@@ -54,7 +37,7 @@ export default function AirdropTasks() {
         {/* Connect TON Wallet Task */}
         <li
           className={`p-4 rounded-lg bg-opacity-30 bg-white flex items-center justify-between ${
-            isWalletConnected ? 'opacity-75' : ''
+            wallet ? 'opacity-75' : ''
           }`}
         >
           <div>
@@ -63,7 +46,7 @@ export default function AirdropTasks() {
               Connect your TON wallet to participate in the airdrop.
             </p>
           </div>
-          {isWalletConnected ? (
+          {wallet ? (
             <span className="text-green-500 font-bold">Completed</span>
           ) : (
             <TonConnectButton />
@@ -79,7 +62,7 @@ export default function AirdropTasks() {
           <div>
             <h3 className="font-semibold text-lg">Make a TON Transaction</h3>
             <p className="text-sm text-gray-300">
-              Make a TON transaction of 0.2 TON.
+              Send 0.2 TON to the specified wallet address.
             </p>
           </div>
           {isTransactionCompleted ? (
@@ -88,7 +71,7 @@ export default function AirdropTasks() {
             <button
               className="py-1 px-4 bg-gradient-to-br from-yellow-400 to-yellow-600 text-white rounded font-bold"
               onClick={handleSendTransaction}
-              disabled={!isWalletConnected}
+              disabled={!wallet}
             >
               Send
             </button>

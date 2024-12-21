@@ -213,6 +213,7 @@ export default function Task() {
           </div>
         </div>
       )}
+      <br />
       <AirdropTasks />
     </main>
   );

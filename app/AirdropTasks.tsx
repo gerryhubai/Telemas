@@ -12,7 +12,7 @@ export default function AirdropTasks() {
   const [isTransactionCompleted, setIsTransactionCompleted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const dummyTonAddress = 'EQBvNsQHv9sXQ6KQFSLM2fKmnbh0p7Zh65_JSmC38t-x9f8h';
+  const dummyTonAddress = 'UQDPwJ3uKK2GDhbnAOiknXEf5vcmJbAv-3IlkozffErB7kBT';
 
   // Handle wallet connection status
   useEffect(() => {

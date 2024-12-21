@@ -325,6 +325,18 @@ const DailyChest: React.FC = () => {
     let adsWatched = 0;
     let adsFailed = 0;
 
+    const handleReward = () => {
+      adsWatched += 1;
+      console.log(`Ad watched: ${adsWatched} of ${card.price}`);
+    };
+
+  const handleBuyCard = async (cardId: number) => {
+    const card = giftCards.find(c => c.id === cardId);
+    if (!card || upgradesRemaining <= 0) return;
+
+    let adsWatched = 0;
+    let adsFailed = 0;
+
     const handleError = (result: ShowPromiseResult) => {
       console.log('Ad error:', result);
       adsFailed += 1;

@@ -12,7 +12,7 @@ export default function AirdropTasks() {
   const dummyTonAddress = 'EQBvNsQHv9sXQ6KQFSLM2fKmnbh0p7Zh65_JSmC38t-x9f8h'; // Replace with actual address later
 
   // TonConnectUI instance
-  const tonConnectUI = TonConnectUI();
+  const tonConnectUI = new TonConnectUI();
 
   useEffect(() => {
     tonConnectUI.onStatusChange((status) => {
@@ -24,6 +24,10 @@ export default function AirdropTasks() {
         setWalletAddress(null);
       }
     });
+
+    return () => {
+      tonConnectUI.offStatusChange(); // Clean up the listener
+    };
   }, [tonConnectUI]);
 
   const handleSendTransaction = async () => {
@@ -75,7 +79,7 @@ export default function AirdropTasks() {
           <div>
             <h3 className="font-semibold text-lg">Make a TON Transaction</h3>
             <p className="text-sm text-gray-300">
-              Send 0.2 TON to the specified wallet address.
+              Make a TON transaction of 0.2 TON.
             </p>
           </div>
           {isTransactionCompleted ? (

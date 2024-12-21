@@ -28,30 +28,20 @@ export default function AirdropTasks() {
 
   // Fetch Telegram ID using TWA SDK
   useEffect(() => {
-  try {
-    const user: WebAppUser | undefined = WebApp.initDataUnsafe?.user;
+    try {
+      const user = WebApp.initDataUnsafe?.user as UserData | undefined;
 
-    if (user && user.id) {
-      // Convert user to UserData type
-      const userData: UserData = {
-        id: user.id,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        username: user.username,
-        language_code: user.language_code, // May be undefined, but that's fine
-        is_premium: user.is_premium,
-      };
-
-      setTelegramId(userData.id.toString());
-      console.log('Telegram User Data:', userData);
-    } else {
-      setError('Unable to fetch Telegram user data');
+      if (user && user.id) {
+        setTelegramId(user.id.toString());
+        console.log('Telegram User Data:', user);
+      } else {
+        setError('Unable to fetch Telegram user data');
+      }
+    } catch (err) {
+      setError('Error initializing Telegram Web App');
+      console.error('TWA SDK Error:', err);
     }
-  } catch (err) {
-    setError('Error initializing Telegram Web App');
-    console.error('TWA SDK Error:', err);
-  }
-}, []);
+  }, []);
 
 
   // Check Wallet Connection

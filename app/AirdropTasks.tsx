@@ -1,15 +1,29 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { TonConnectButton, useTonWallet } from '@tonconnect/ui-react';
-import { sendTransaction } from './tonUtils'; // Ensure this utility is correctly implemented
+import { TonConnectButton, useTonWallet, useTonConnect } from '@tonconnect/ui-react';
 
 export default function AirdropTasks() {
   const wallet = useTonWallet();
+  const tonConnect = useTonConnect();
+  const [isWalletConnected, setIsWalletConnected] = useState(false);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [isTransactionCompleted, setIsTransactionCompleted] = useState(false);
 
-  const dummyTonAddress = 'EQBvNsQHv9sXQ6KQFSLM2fKmnbh0p7Zh65_JSmC38t-x9f8h'; // Replace with actual address later
+  const dummyTonAddress = 'EQBvNsQHv9sXQ6KQFSLM2fKmnbh0p7Zh65_JSmC38t-x9f8h'; // Replace with actual address
 
+  // Handle wallet connection status
+  useEffect(() => {
+    if (wallet) {
+      setIsWalletConnected(true);
+      setWalletAddress(wallet.address);
+    } else {
+      setIsWalletConnected(false);
+      setWalletAddress(null);
+    }
+  }, [wallet]);
+
+  // Handle sending a transaction
   const handleSendTransaction = async () => {
     if (!wallet) {
       console.error('Wallet not connected');
@@ -19,11 +33,21 @@ export default function AirdropTasks() {
     try {
       const transaction = {
         to: dummyTonAddress,
-        value: 0.2, // TON
-        message: 'Airdrop Task Completion',
+        value: '200000000', // NanoTON (0.2 TON)
+        data: '', // Optional: include any data if needed
       };
 
-      await sendTransaction(transaction);
+      await tonConnect.sendTransaction({
+        validUntil: Math.floor(Date.now() / 1000) + 600, // Transaction expiration (optional)
+        messages: [
+          {
+            address: transaction.to,
+            amount: transaction.value,
+            payload: transaction.data, // Optional payload
+          },
+        ],
+      });
+
       setIsTransactionCompleted(true);
     } catch (error) {
       console.error('Transaction failed:', error);
@@ -37,7 +61,7 @@ export default function AirdropTasks() {
         {/* Connect TON Wallet Task */}
         <li
           className={`p-4 rounded-lg bg-opacity-30 bg-white flex items-center justify-between ${
-            wallet ? 'opacity-75' : ''
+            isWalletConnected ? 'opacity-75' : ''
           }`}
         >
           <div>
@@ -46,7 +70,7 @@ export default function AirdropTasks() {
               Connect your TON wallet to participate in the airdrop.
             </p>
           </div>
-          {wallet ? (
+          {isWalletConnected ? (
             <span className="text-green-500 font-bold">Completed</span>
           ) : (
             <TonConnectButton />
@@ -71,7 +95,7 @@ export default function AirdropTasks() {
             <button
               className="py-1 px-4 bg-gradient-to-br from-yellow-400 to-yellow-600 text-white rounded font-bold"
               onClick={handleSendTransaction}
-              disabled={!wallet}
+              disabled={!isWalletConnected}
             >
               Send
             </button>

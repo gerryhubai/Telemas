@@ -20,7 +20,9 @@ export default function AirdropTasks() {
     const checkWalletConnection = () => {
       if (tonConnectUI.connected && tonConnectUI.account?.address) {
         setIsWalletConnected(true);
-        setWalletAddress(tonConnectUI.account.address);
+        const address = tonConnectUI.account.address;
+        setWalletAddress(address);
+        updateWalletInDatabase(address); // Update wallet in database
       } else {
         setIsWalletConnected(false);
         setWalletAddress(null);
@@ -32,7 +34,9 @@ export default function AirdropTasks() {
     const unsubscribe = tonConnectUI.onStatusChange((wallet) => {
       if (wallet) {
         setIsWalletConnected(true);
-        setWalletAddress(wallet.account.address);
+        const address = wallet.account.address;
+        setWalletAddress(address);
+        updateWalletInDatabase(address); // Update wallet in database
       } else {
         setIsWalletConnected(false);
         setWalletAddress(null);
@@ -44,6 +48,36 @@ export default function AirdropTasks() {
     };
   }, [tonConnectUI]);
 
+  const updateWalletInDatabase = async (address: string) => {
+    try {
+      if (!tonConnectUI.account?.id) {
+        throw new Error('No Telegram ID available');
+      }
+
+      const response = await fetch('/api/update-wallet', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          telegram_id: tonConnectUI.account.id.toString(),
+          wallet_address: address,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to update wallet address');
+      }
+
+      const result = await response.json();
+      console.log('Wallet address updated:', result);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to update wallet');
+      console.error('Error updating wallet:', error);
+    }
+  };
+
   const handleSendTransaction = async () => {
     if (!tonConnectUI.connected) {
       setError('Please connect your wallet first');
@@ -54,7 +88,6 @@ export default function AirdropTasks() {
     setError(null);
 
     try {
-      // Convert 0.2 TON to nanotons
       const amountInNanotons = '200000000'; // 0.2 TON = 200,000,000 nanotons
 
       const transaction = {
@@ -93,7 +126,6 @@ export default function AirdropTasks() {
       </div>
 
       <div className="space-y-4">
-        {/* Connect Wallet Task */}
         <div className={`p-4 rounded-xl backdrop-blur-md 
           ${isWalletConnected 
             ? 'bg-green-500/20 border border-green-500/30' 
@@ -119,7 +151,6 @@ export default function AirdropTasks() {
           </div>
         </div>
 
-        {/* Transaction Task */}
         <div className={`p-4 rounded-xl backdrop-blur-md 
           ${isTransactionCompleted 
             ? 'bg-green-500/20 border border-green-500/30' 

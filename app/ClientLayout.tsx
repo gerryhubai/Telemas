@@ -1,9 +1,11 @@
 'use client';
-
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Bell, Users, CheckSquare } from 'lucide-react';
+import { TonConnectUIProvider } from '@tonconnect/ui-react';
+
+const manifestUrl = 'https://raw.githubusercontent.com/ton-community/tutorials/main/03-wallet/test/public/tonconnect-manifest.json';
 
 const NavLink = ({ href, children }: { href: string; children: React.ReactNode }) => {
   const pathname = usePathname();
@@ -25,10 +27,8 @@ const ClientLayout = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const userAgent = navigator.userAgent || navigator.vendor;
-
     // Check if the user is on a mobile device
     const isMobile = /android|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
-
     // Set access permission based on mobile detection
     setIsAllowed(isMobile);
     
@@ -59,32 +59,33 @@ const ClientLayout = ({ children }: { children: React.ReactNode }) => {
 
   // If the user is on mobile, render the app
   return (
-    <div className="flex flex-col min-h-screen">
-      <main className={`flex-grow ${isMainPage ? '' : 'overflow-auto pb-20'}`}>
-        {children}
-      </main>
-      <footer className="bg-red-900 text-white py-4 px-6 flex justify-between items-center fixed bottom-0 left-0 right-0 z-30">
-  <div className="flex items-center space-x-4">
-    <NavLink href="/dailychest">
-    <img src="telemas-treasure-chest.png" alt="Quest Chest" className="w-8 h-8" />
-      </NavLink>
-    <Link href="/">
-      <span className="font-bold text-4xl cursor-pointer">🎅</span>
-    </Link>
-  </div>
-  <nav className="flex space-x-8">
-    <NavLink href="/friends">
-      <Users size={24} />
-      <span className="text-lg">Friends</span>
-    </NavLink>
-    <NavLink href="/tasks">
-      <CheckSquare size={24} />
-      <span className="text-lg">Tasks</span>
-    </NavLink>
-  </nav>
-</footer>
-
-    </div>
+    <TonConnectUIProvider manifestUrl={manifestUrl}>
+      <div className="flex flex-col min-h-screen">
+        <main className={`flex-grow ${isMainPage ? '' : 'overflow-auto pb-20'}`}>
+          {children}
+        </main>
+        <footer className="bg-red-900 text-white py-4 px-6 flex justify-between items-center fixed bottom-0 left-0 right-0 z-30">
+          <div className="flex items-center space-x-4">
+            <NavLink href="/dailychest">
+              <img src="telemas-treasure-chest.png" alt="Quest Chest" className="w-8 h-8" />
+            </NavLink>
+            <Link href="/">
+              <span className="font-bold text-4xl cursor-pointer">🎅</span>
+            </Link>
+          </div>
+          <nav className="flex space-x-8">
+            <NavLink href="/friends">
+              <Users size={24} />
+              <span className="text-lg">Friends</span>
+            </NavLink>
+            <NavLink href="/tasks">
+              <CheckSquare size={24} />
+              <span className="text-lg">Tasks</span>
+            </NavLink>
+          </nav>
+        </footer>
+      </div>
+    </TonConnectUIProvider>
   );
 };
 

@@ -4,7 +4,17 @@ import { useState, useEffect } from 'react';
 import { TonConnectButton } from '@tonconnect/ui-react';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import { Gift, Wallet } from 'lucide-react';
+import WebApp from '@twa-dev/sdk'; // Import TWA SDK
 import TonWeb from 'tonweb';
+
+interface UserData {
+  id: number;
+  first_name: string;
+  last_name?: string;
+  username?: string;
+  language_code: string;
+  is_premium?: boolean;
+}
 
 export default function AirdropTasks() {
   const [tonConnectUI] = useTonConnectUI();
@@ -13,16 +23,33 @@ export default function AirdropTasks() {
   const [isTransactionCompleted, setIsTransactionCompleted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
+  const [telegramId, setTelegramId] = useState<string | null>(null); // Telegram ID state
   const dummyTonAddress = 'UQDPwJ3uKK2GDhbnAOiknXEf5vcmJbAv-3IlkozffErB7kBT';
 
+  // Fetch Telegram ID using TWA SDK
+  useEffect(() => {
+    try {
+      const user: UserData | undefined = WebApp.initDataUnsafe?.user;
+
+      if (user && user.id) {
+        setTelegramId(user.id.toString());
+        console.log('Telegram User Data:', user);
+      } else {
+        setError('Unable to fetch Telegram user data');
+      }
+    } catch (err) {
+      setError('Error initializing Telegram Web App');
+      console.error('TWA SDK Error:', err);
+    }
+  }, []);
+
+  // Check Wallet Connection
   useEffect(() => {
     const checkWalletConnection = () => {
       if (tonConnectUI.connected && tonConnectUI.account?.address) {
         setIsWalletConnected(true);
-        const address = tonConnectUI.account.address;
-        setWalletAddress(address);
-        updateWalletInDatabase(address); // Update wallet in database
+        setWalletAddress(tonConnectUI.account.address);
+        updateWalletInDatabase(tonConnectUI.account.address); // Update wallet in the database
       } else {
         setIsWalletConnected(false);
         setWalletAddress(null);
@@ -34,9 +61,8 @@ export default function AirdropTasks() {
     const unsubscribe = tonConnectUI.onStatusChange((wallet) => {
       if (wallet) {
         setIsWalletConnected(true);
-        const address = wallet.account.address;
-        setWalletAddress(address);
-        updateWalletInDatabase(address); // Update wallet in database
+        setWalletAddress(wallet.account.address);
+        updateWalletInDatabase(wallet.account.address); // Update wallet when status changes
       } else {
         setIsWalletConnected(false);
         setWalletAddress(null);
@@ -48,9 +74,10 @@ export default function AirdropTasks() {
     };
   }, [tonConnectUI]);
 
+  // Update Wallet Address in Database
   const updateWalletInDatabase = async (address: string) => {
     try {
-      if (!tonConnectUI.account?.id) {
+      if (!telegramId) {
         throw new Error('No Telegram ID available');
       }
 
@@ -60,7 +87,7 @@ export default function AirdropTasks() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          telegram_id: tonConnectUI.account.id.toString(),
+          telegram_id: telegramId,
           wallet_address: address,
         }),
       });
@@ -71,13 +98,16 @@ export default function AirdropTasks() {
       }
 
       const result = await response.json();
-      console.log('Wallet address updated:', result);
+      console.log('Wallet updated successfully:', result);
+      return result;
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to update wallet');
       console.error('Error updating wallet:', error);
+      throw error;
     }
   };
 
+  // Handle Transaction
   const handleSendTransaction = async () => {
     if (!tonConnectUI.connected) {
       setError('Please connect your wallet first');
@@ -88,6 +118,7 @@ export default function AirdropTasks() {
     setError(null);
 
     try {
+      // Convert 0.2 TON to nanotons
       const amountInNanotons = '200000000'; // 0.2 TON = 200,000,000 nanotons
 
       const transaction = {
@@ -126,11 +157,14 @@ export default function AirdropTasks() {
       </div>
 
       <div className="space-y-4">
-        <div className={`p-4 rounded-xl backdrop-blur-md 
+        {/* Connect Wallet Task */}
+        <div
+          className={`p-4 rounded-xl backdrop-blur-md 
           ${isWalletConnected 
             ? 'bg-green-500/20 border border-green-500/30' 
             : 'bg-white/20 border border-white/30'
-          } transition-all duration-300`}>
+          } transition-all duration-300`}
+        >
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Wallet className="w-5 h-5 text-white" />
@@ -142,7 +176,7 @@ export default function AirdropTasks() {
               </span>
             )}
           </div>
-          
+
           <div className="flex items-center justify-between">
             <p className="text-sm text-gray-200">
               Connect your wallet to participate in the holiday airdrop
@@ -151,11 +185,14 @@ export default function AirdropTasks() {
           </div>
         </div>
 
-        <div className={`p-4 rounded-xl backdrop-blur-md 
+        {/* Transaction Task */}
+        <div
+          className={`p-4 rounded-xl backdrop-blur-md 
           ${isTransactionCompleted 
             ? 'bg-green-500/20 border border-green-500/30' 
             : 'bg-white/20 border border-white/30'
-          } transition-all duration-300`}>
+          } transition-all duration-300`}
+        >
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Gift className="w-5 h-5 text-white" />

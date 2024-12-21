@@ -193,7 +193,7 @@ const GiftCardModal: React.FC<{
   );
 };
 
-const DailyChest: React.FC = () => {
+const DailyChest = () => {
   // Existing states
   const [coins, setCoins] = useState<number>(0);
   const [chestOpened, setChestOpened] = useState<boolean>(false);

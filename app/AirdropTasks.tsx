@@ -9,10 +9,10 @@ import TonWeb from 'tonweb';
 export default function AirdropTasks() {
   const [tonConnectUI] = useTonConnectUI();
   const [isWalletConnected, setIsWalletConnected] = useState(false);
-  const [walletAddress, setWalletAddress] = useState(null);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [isTransactionCompleted, setIsTransactionCompleted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
   const dummyTonAddress = 'UQDPwJ3uKK2GDhbnAOiknXEf5vcmJbAv-3IlkozffErB7kBT';
 

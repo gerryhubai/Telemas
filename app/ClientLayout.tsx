@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bell, Users, CheckSquare } from 'lucide-react';
 
 const NavLink = ({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) => {
   const pathname = usePathname();
@@ -33,10 +32,10 @@ const Footer = () => {
           <span className="font-bold text-4xl cursor-pointer">🎅</span>
         </Link>
       </div>
-      <nav className="flex space-x-8">
-        <NavLink href="/friends" icon={<Users size={24} />} label="Friends" />
-        <NavLink href="/tasks" icon={<CheckSquare size={24} />} label="Tasks" />
-        <NavLink href="/airdrop" icon={<span>🥇</span>} label="Airdrop" />
+      <nav className="flex space-x-8 text-2xl">
+        <NavLink href="/friends" icon={<span>🧑‍🤝‍🧑</span>} />
+        <NavLink href="/tasks" icon={<span>📝</span> size={24} />} />
+        <NavLink href="/airdrop" icon={<span>🥇</span>} />
       </nav>
     </footer>
   );

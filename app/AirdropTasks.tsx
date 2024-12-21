@@ -4,15 +4,17 @@ import { useState, useEffect } from 'react';
 import { TonConnectButton } from '@tonconnect/ui-react';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import { Gift, Wallet } from 'lucide-react';
-import WebApp from '@twa-dev/sdk'; // Import TWA SDK
+import WebApp, { WebAppUser } from '@twa-dev/sdk'; // Import TWA SDK
 import TonWeb from 'tonweb';
+
+import WebApp, { WebAppUser } from '@twa-dev/sdk';
 
 interface UserData {
   id: number;
   first_name: string;
   last_name?: string;
   username?: string;
-  language_code: string;
+  language_code?: string; // Make this optional to match the SDK type
   is_premium?: boolean;
 }
 
@@ -28,20 +30,31 @@ export default function AirdropTasks() {
 
   // Fetch Telegram ID using TWA SDK
   useEffect(() => {
-    try {
-      const user: UserData | undefined = WebApp.initDataUnsafe?.user;
+  try {
+    const user: WebAppUser | undefined = WebApp.initDataUnsafe?.user;
 
-      if (user && user.id) {
-        setTelegramId(user.id.toString());
-        console.log('Telegram User Data:', user);
-      } else {
-        setError('Unable to fetch Telegram user data');
-      }
-    } catch (err) {
-      setError('Error initializing Telegram Web App');
-      console.error('TWA SDK Error:', err);
+    if (user && user.id) {
+      // Convert user to UserData type
+      const userData: UserData = {
+        id: user.id,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        username: user.username,
+        language_code: user.language_code, // May be undefined, but that's fine
+        is_premium: user.is_premium,
+      };
+
+      setTelegramId(userData.id.toString());
+      console.log('Telegram User Data:', userData);
+    } else {
+      setError('Unable to fetch Telegram user data');
     }
-  }, []);
+  } catch (err) {
+    setError('Error initializing Telegram Web App');
+    console.error('TWA SDK Error:', err);
+  }
+}, []);
+
 
   // Check Wallet Connection
   useEffect(() => {

@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useAdsgram, ShowPromiseResult } from '../../hooks/useAdsgram';
 import { TonConnectButton, useTonConnectUI } from '@tonconnect/ui-react';
 import { ShoppingCart, Crown, Wallet } from 'lucide-react';
-import { WebApp} from '@twa-dev/sdk';
+import WebApp from '@twa-dev/sdk';
 
 interface StarBurstProps {
   isVisible: boolean;

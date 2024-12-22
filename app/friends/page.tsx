@@ -23,12 +23,16 @@ export default function Friends() {
 
           // Fetch referral count
           if (userTelegramId) {
-            const response = await fetch(`/api/user?telegram_id=${userTelegramId}`);
-            if (response.ok) {
+            try {
+              const response = await fetch(`/api/user?telegram_id=${userTelegramId}`);
               const data = await response.json();
-              setReferralCount(data.referralCount || 0);
-            } else {
-              console.error('Failed to fetch referral count:', await response.text());
+              if (data.success) {
+                setReferralCount(parseInt(data.referralCount, 10));
+              } else {
+                console.error('Failed to fetch referral count:', data.error);
+              }
+            } catch (error) {
+              console.error('Error fetching referral count:', error);
             }
           }
         } catch (error) {
@@ -48,6 +52,12 @@ export default function Friends() {
           Christmas Friends
         </h1>
         <p className="text-center mb-6 text-green-800">Spread the holiday cheer! Invite your friends and earn rewards.</p>
+        
+        <div className="bg-red-100 rounded-lg p-4 mb-6">
+          <p className="text-center text-red-800 font-semibold">
+            Your Invited Friends: <span className="text-2xl">{referralCount}</span>
+          </p>
+        </div>
 
         <ReferralSystem initData={initData} userId={userId} startParam={startParam} />
         

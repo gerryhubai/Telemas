@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@orbs-network/ton-access": "^2.3.3",
     "@ton/core": "^0.57.0",
     "@tonconnect/sdk": "^3.0.5",
     "@tonconnect/ui-react": "^2.0.9",

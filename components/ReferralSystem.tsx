@@ -76,11 +76,6 @@ const ReferralSystem: React.FC<ReferralSystemProps> = ({ initData, userId, start
 
   return (
     <div className="w-full max-w-md">
-      <div className="bg-red-100 rounded-lg p-4 mb-6">
-        <p className="text-center text-red-800 font-semibold">
-          Your Invited Friends: <span className="text-2xl">{referralCount}</span>
-        </p>
-      </div>
       <div className="flex flex-col space-y-4">
         <button
           onClick={handleInviteFriend}

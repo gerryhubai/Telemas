@@ -51,7 +51,8 @@ const premiumCards = [
   { id: 'p1', name: "Royal Christmas", description: "A majestic celebration fit for royalty!", priceInTon: 0.02, image: '/giftcards/premium1.jpg' },
   { id: 'p2', name: "Celestial Wonder", description: "Ethereal beauty of the winter night sky!", priceInTon: 0.05, image: '/giftcards/premium2.jpg' },
   { id: 'p3', name: "Golden Splendor", description: "The most luxurious holiday experience!", priceInTon: 0.1, image: '/giftcards/premium3.jpg' },
-  { id: 'p4', name: "Falling Santa", description: "Santa glides the skies to enrich your celebration with hope and wealth!", priceInTon: 0.1, image: '/giftcards/premium3.jpg' },
+  { id: 'p4', name: "Falling Santa", description: "Santa glides the skies to enrich your celebration with hope and wealth!", priceInTon: 0.1, image: '/giftcards/premium4.jpg' },
+  { id: 'p5', name: "Falling Santa", description: "Give your room a touch of excellence with gifts of love!", priceInTon: 0.1, image: '/giftcards/premium5.jpg' },
 
 ];
 

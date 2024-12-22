@@ -13,29 +13,34 @@ export default function Friends() {
   useEffect(() => {
     const initWebApp = async () => {
       if (typeof window !== 'undefined') {
-        const WebApp = (await import('@twa-dev/sdk')).default;
-        WebApp.ready();
-        setInitData(WebApp.initData);
-        const userTelegramId = WebApp.initDataUnsafe.user?.id.toString() || '';
-        setUserId(userTelegramId);
-        setStartParam(WebApp.initDataUnsafe.start_param || '');
+        try {
+          const WebApp = (await import('@twa-dev/sdk')).default;
+          WebApp.ready();
+          setInitData(WebApp.initData);
+          const userTelegramId = WebApp.initDataUnsafe.user?.id?.toString() || '';
+          setUserId(userTelegramId);
+          setStartParam(WebApp.initDataUnsafe.start_param || '');
 
-        // Fetch referral count
-        if (userTelegramId) {
-          try {
-            const response = await fetch(`/api/user?telegram_id=${userTelegramId}`);
-            const data = await response.json();
-            if (data.success) {
-              setReferralCount(parseInt(data.referralCount, 10));
-            } else {
-              console.error('Failed to fetch referral count:', data.error);
+          // Fetch referral count
+          if (userTelegramId) {
+            try {
+              const response = await fetch(`/api/user?telegram_id=${userTelegramId}`);
+              const data = await response.json();
+              if (data.success) {
+                setReferralCount(parseInt(data.referralCount, 10));
+              } else {
+                console.error('Failed to fetch referral count:', data.error);
+              }
+            } catch (error) {
+              console.error('Error fetching referral count:', error);
             }
-          } catch (error) {
-            console.error('Error fetching referral count:', error);
           }
+        } catch (error) {
+          console.error('Error initializing Telegram Web App SDK:', error);
         }
       }
     };
+
     initWebApp();
   }, []);
 
@@ -54,7 +59,7 @@ export default function Friends() {
           </p>
         </div>
 
-       {    <ReferralSystem initData={initData} userId={userId} startParam={startParam} />
+        <ReferralSystem initData={initData} userId={userId} startParam={startParam} />
         
         <div className="mt-8 flex justify-center items-center space-x-4">
           <Gift className="text-red-700" size={24} />

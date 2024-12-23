@@ -143,7 +143,7 @@ const connectToTON = async (telegram_id: string): Promise<void> => {
       return; // Exit early if no wallet is connected
     }
 
-    const walletAddress = wallet.address;
+    const walletAddress = wallet.account.address;
     console.log('Wallet connected:', walletAddress);
 
     // Insert the wallet address into the database

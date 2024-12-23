@@ -281,9 +281,7 @@ export default function AirdropTasks() {
               <p className="text-sm text-gray-200 mb-2">
                 Send 0.2 TON to participate in the holiday airdrop
               </p>
-              {error && (
-                <p className="text-red-400 text-sm mt-1">{error}</p>
-              )}
+              
             </div>
             {!isTransactionCompleted && (
               <button

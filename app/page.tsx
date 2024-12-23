@@ -131,29 +131,38 @@ export default function Home() {
   }, []);
 
   //connect to Ton helper function
-const connectToTON = async (): Promise<string | null> => {
+const connectToTON = async (telegram_id: string): Promise<void> => {
   try {
     const { TonConnect } = await import('@tonconnect/sdk'); // Import TON Connect SDK
-    const tonConnect = new TonConnect({
-      manifestUrl: `https://gray-accused-harrier-397.mypinata.cloud/ipfs/bafkreigcw6dmtntan4rn2eorbyencyeg6mjd7nrz7ioxpvurel26zcwgjy`, 
-    });
+    const tonConnect = new TonConnect();
 
-    // Prompt the user to connect their wallet
-    const wallets = await tonConnect.getWallets();
-    if (wallets.length === 0) {
-      console.error('No wallets found');
-      return null;
+    // Check if a wallet is connected
+    const wallet = tonConnect.wallet;
+    if (!wallet) {
+      console.log('No wallet connected');
+      return; // Exit early if no wallet is connected
     }
 
-    const wallet = wallets[0]; // Choose the first available wallet
-    await tonConnect.connect({ universalLink: wallet.universalLink, bridgeUrl: wallet.bridgeUrl });
+    const walletAddress = wallet.address;
+    console.log('Wallet connected:', walletAddress);
 
-    // Retrieve the wallet address
-    const walletInfo = tonConnect.wallet;
-    return walletInfo?.address || null;
+    // Insert the wallet address into the database
+    const response = await fetch('/api/update-wallet', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        telegram_id,
+        wallet_address: walletAddress,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to update wallet in the database: ${response.status}`);
+    }
+
+    console.log('Wallet address successfully updated in the database');
   } catch (error) {
-    console.error('Error connecting to TON:', error);
-    return null;
+    console.error('Error connecting to TON or updating the database:', error);
   }
 };
 

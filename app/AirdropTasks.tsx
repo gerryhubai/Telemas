@@ -4,17 +4,7 @@ import { useState, useEffect } from 'react';
 import { TonConnectButton } from '@tonconnect/ui-react';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import { Gift, Wallet } from 'lucide-react';
-import WebApp from '@twa-dev/sdk'; // Import TWA SDK
 import TonWeb from 'tonweb';
-
-interface UserData {
-  id: number;
-  first_name: string;
-  last_name?: string;
-  username?: string;
-  language_code?: string; // Make this optional to match the SDK type
-  is_premium?: boolean;
-}
 
 export default function AirdropTasks() {
   const [tonConnectUI] = useTonConnectUI();
@@ -23,26 +13,28 @@ export default function AirdropTasks() {
   const [isTransactionCompleted, setIsTransactionCompleted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [telegramId, setTelegramId] = useState<string | null>(null); // Telegram ID state
+  const [telegramId, setTelegramId] = useState<string>(''); // Telegram ID state
   const dummyTonAddress = 'UQDPwJ3uKK2GDhbnAOiknXEf5vcmJbAv-3IlkozffErB7kBT';
 
-  // Fetch Telegram ID using TWA SDK
+  // Fetch Telegram ID using the same method from Friends.tsx
   useEffect(() => {
-    try {
-      const user = WebApp.initDataUnsafe?.user as UserData | undefined;
-
-      if (user && user.id) {
-        setTelegramId(user.id.toString());
-        console.log('Telegram User Data:', user);
-      } else {
-        setError('Unable to fetch Telegram user data');
+    const initWebApp = async () => {
+      if (typeof window !== 'undefined') {
+        try {
+          const WebApp = (await import('@twa-dev/sdk')).default;
+          WebApp.ready();
+          const userTelegramId = WebApp.initDataUnsafe.user?.id?.toString() || '';
+          setTelegramId(userTelegramId);
+          console.log('Telegram User ID:', userTelegramId);
+        } catch (error) {
+          console.error('Error initializing Telegram Web App SDK:', error);
+          setError('Error initializing Telegram Web App');
+        }
       }
-    } catch (err) {
-      setError('Error initializing Telegram Web App');
-      console.error('TWA SDK Error:', err);
-    }
-  }, []);
+    };
 
+    initWebApp();
+  }, []);
 
   // Check Wallet Connection
   useEffect(() => {

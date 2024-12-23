@@ -50,32 +50,34 @@ export default function AirdropTasks() {
 
   // Initialize Telegram WebApp and get user ID
   useEffect(() => {
-    const getTelegramId = () => {
+    if (typeof window !== 'undefined') {
       try {
-        // Check if we're in the Telegram WebApp environment
+        console.log('Initializing Telegram WebApp...');
+        console.log('Window.Telegram:', window.Telegram);
+        
         if (window.Telegram?.WebApp) {
           window.Telegram.WebApp.ready();
           window.Telegram.WebApp.expand();
           
           const userId = window.Telegram.WebApp.initDataUnsafe.user?.id;
+          console.log('User ID from Telegram:', userId);
+          
           if (userId) {
             setTelegramId(userId.toString());
-            console.log('Telegram User ID retrieved:', userId);
+            console.log('Telegram User ID set successfully:', userId);
           } else {
             console.error('No user ID found in Telegram WebApp data');
-            setError('Could not retrieve Telegram ID - Are you opening this in Telegram?');
+            setError('Could not retrieve Telegram ID - Please open in Telegram');
           }
         } else {
           console.error('Telegram WebApp is not available');
           setError('This app must be opened in Telegram');
         }
       } catch (error) {
-        console.error('Error accessing Telegram WebApp:', error);
+        console.error('Error initializing Telegram WebApp:', error);
         setError('Error accessing Telegram features');
       }
-    };
-
-    getTelegramId();
+    }
   }, []);
 
   // Monitor wallet connection
@@ -116,6 +118,11 @@ export default function AirdropTasks() {
         console.warn('No Telegram ID available for wallet update');
         return;
       }
+
+      console.log('Updating wallet in database:', {
+        telegram_id: telegramId,
+        wallet_address: address
+      });
 
       const response = await fetch('/api/update-wallet', {
         method: 'POST',
@@ -181,7 +188,7 @@ export default function AirdropTasks() {
             },
             body: JSON.stringify({
               telegram_id: telegramId,
-              transaction_hash: result.boc, // or however the hash is returned
+              transaction_hash: result.boc,
               status: 'completed'
             }),
           });
@@ -271,8 +278,7 @@ export default function AirdropTasks() {
 
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-sm text-gray-200 mb-2"></antArtifact>
-<p className="text-sm text-gray-200 mb-2">
+              <p className="text-sm text-gray-200 mb-2">
                 Send 0.2 TON to participate in the holiday airdrop
               </p>
               {error && (

@@ -130,6 +130,25 @@ export default function Home() {
     };
   }, []);
 
+  //connect to Ton helper function
+const connectToTON = async (): Promise<string | null> => {
+  try {
+    const provider = await import('@tonconnect/sdk'); // Import TON Connect SDK
+    const tonConnect = new provider.TonConnect();
+
+    // Prompt the user to connect their wallet
+    await tonConnect.connect();
+
+    // Retrieve wallet address
+    const walletInfo = tonConnect.wallet;
+    return walletInfo?.address || null;
+  } catch (error) {
+    console.error('Error connecting to TON:', error);
+    return null;
+  }
+};
+
+
   // Initialize the user 
 const initializeUser = async (
   telegram_id: string,

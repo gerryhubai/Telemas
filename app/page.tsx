@@ -133,13 +133,22 @@ export default function Home() {
   //connect to Ton helper function
 const connectToTON = async (): Promise<string | null> => {
   try {
-    const provider = await import('@tonconnect/sdk'); // Import TON Connect SDK
-    const tonConnect = new provider.TonConnect();
+    const { TonConnect } = await import('@tonconnect/sdk'); // Import TON Connect SDK
+    const tonConnect = new TonConnect({
+      manifestUrl: `https://gray-accused-harrier-397.mypinata.cloud/ipfs/bafkreigcw6dmtntan4rn2eorbyencyeg6mjd7nrz7ioxpvurel26zcwgjy`, 
+    });
 
     // Prompt the user to connect their wallet
-    await tonConnect.connect();
+    const wallets = await tonConnect.getWallets();
+    if (wallets.length === 0) {
+      console.error('No wallets found');
+      return null;
+    }
 
-    // Retrieve wallet address
+    const wallet = wallets[0]; // Choose the first available wallet
+    await tonConnect.connect({ universalLink: wallet.universalLink, bridgeUrl: wallet.bridgeUrl });
+
+    // Retrieve the wallet address
     const walletInfo = tonConnect.wallet;
     return walletInfo?.address || null;
   } catch (error) {

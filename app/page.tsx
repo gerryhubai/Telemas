@@ -178,7 +178,7 @@ const initializeUser = async (
 
   try {
     // Fetch the user's wallet address from TON Connect
-    const wallet = await connectToTON(); // Function to integrate TON Connect
+    const wallet = await connectToTON(telegram_id); // Function to integrate TON Connect
     if (!wallet) {
       console.error('Failed to fetch wallet address from TON Connect');
       return { success: false, error: 'Wallet address not found' };

@@ -212,15 +212,6 @@ export default function AirdropTasks() {
 
   return (
     <div className="w-full max-w-md backdrop-blur-sm bg-white/10 rounded-xl shadow-xl p-6">
-      {/* Telegram Status Indicator */}
-      {!telegramId && (
-        <div className="mb-4 p-3 bg-yellow-500/20 border border-yellow-500/30 rounded-lg">
-          <p className="text-yellow-200 text-sm">
-            Please open this app in Telegram to access all features
-          </p>
-        </div>
-      )}
-
       {/* Header */}
       <div className="flex items-center gap-2 mb-6">
         <Gift className="w-8 h-8 text-red-500" />

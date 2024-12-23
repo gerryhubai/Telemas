@@ -131,20 +131,38 @@ export default function Home() {
   }, []);
 
   // Initialize the user 
-  const initializeUser = async (
-    telegram_id: string,
-    telegram_username: string,
-    startParameter?: string
-  ) => {
-    const storageKey = `telemasOpenedBefore_${telegram_id}`;
-    const hasOpenedBefore = localStorage.getItem(storageKey) === 'true';
+const initializeUser = async (
+  telegram_id: string,
+  telegram_username: string,
+  startParameter?: string
+) => {
+  const storageKey = `telemasOpenedBefore_${telegram_id}`;
+  const hasOpenedBefore = localStorage.getItem(storageKey) === 'true';
 
-    if (hasOpenedBefore) {
-      console.log('User has opened the app before, skipping database query');
-      return { success: true, message: 'User already initialized' };
+  try {
+    // Fetch the user's wallet address from TON Connect
+    const wallet = await connectToTON(); // Function to integrate TON Connect
+    if (!wallet) {
+      console.error('Failed to fetch wallet address from TON Connect');
+      return { success: false, error: 'Wallet address not found' };
     }
 
-    try {
+    // Update the user's wallet address in the database
+    const walletResponse = await fetch('/api/update-wallet', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ telegram_id, wallet_address: wallet }),
+    });
+
+    if (!walletResponse.ok) {
+      throw new Error(`Failed to update wallet: ${walletResponse.status}`);
+    }
+
+    const walletData = await walletResponse.json();
+    console.log('Wallet address updated successfully:', walletData);
+
+    // Only initialize user if they haven't opened the app before
+    if (!hasOpenedBefore) {
       const response = await fetch('/api/user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -165,16 +183,21 @@ export default function Home() {
       if (data.success) {
         console.log('User initialized successfully');
         localStorage.setItem(storageKey, 'true');
+        return data;
       } else {
         console.error('Error initializing user:', data.error);
+        return { success: false, error: data.error };
       }
-
-      return data;
-    } catch (error) {
-      console.error('Error initializing user:', error);
-      return { success: false, error: 'Failed to initialize user' };
     }
-  };
+
+    console.log('User already initialized');
+    return { success: true, message: 'User already initialized' };
+  } catch (error) {
+    console.error('Error during initialization:', error);
+    return { success: false, error: 'Initialization failed' };
+  }
+};
+
 
   // Telegram WebApp Initialization
   useEffect(() => {

@@ -4,7 +4,39 @@ import { useState, useEffect } from 'react';
 import { TonConnectButton } from '@tonconnect/ui-react';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import { Gift, Wallet } from 'lucide-react';
-import TonWeb from 'tonweb';
+
+// TypeScript declarations for Telegram WebApp
+declare global {
+  interface Window {
+    Telegram?: {
+      WebApp: {
+        initData: string;
+        initDataUnsafe: {
+          user?: {
+            id?: number;
+            first_name?: string;
+            last_name?: string;
+            username?: string;
+          };
+        };
+        ready: () => void;
+        close: () => void;
+        expand: () => void;
+        MainButton: {
+          text: string;
+          color: string;
+          textColor: string;
+          isVisible: boolean;
+          isActive: boolean;
+          show: () => void;
+          hide: () => void;
+          enable: () => void;
+          disable: () => void;
+        };
+      };
+    };
+  }
+}
 
 export default function AirdropTasks() {
   const [tonConnectUI] = useTonConnectUI();
@@ -13,36 +45,46 @@ export default function AirdropTasks() {
   const [isTransactionCompleted, setIsTransactionCompleted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [telegramId, setTelegramId] = useState<string>(''); // Telegram ID state
+  const [telegramId, setTelegramId] = useState<string>('');
   const dummyTonAddress = 'UQDPwJ3uKK2GDhbnAOiknXEf5vcmJbAv-3IlkozffErB7kBT';
 
-  // Fetch Telegram ID using the same method from Friends.tsx
+  // Initialize Telegram WebApp and get user ID
   useEffect(() => {
-    const initWebApp = async () => {
-      if (typeof window !== 'undefined') {
-        try {
-          const WebApp = (await import('@twa-dev/sdk')).default;
-          WebApp.ready();
-          const userTelegramId = WebApp.initDataUnsafe.user?.id?.toString() || '';
-          setTelegramId(userTelegramId);
-          console.log('Telegram User ID:', userTelegramId);
-        } catch (error) {
-          console.error('Error initializing Telegram Web App SDK:', error);
-          setError('Error initializing Telegram Web App');
+    const getTelegramId = () => {
+      try {
+        // Check if we're in the Telegram WebApp environment
+        if (window.Telegram?.WebApp) {
+          window.Telegram.WebApp.ready();
+          window.Telegram.WebApp.expand();
+          
+          const userId = window.Telegram.WebApp.initDataUnsafe.user?.id;
+          if (userId) {
+            setTelegramId(userId.toString());
+            console.log('Telegram User ID retrieved:', userId);
+          } else {
+            console.error('No user ID found in Telegram WebApp data');
+            setError('Could not retrieve Telegram ID - Are you opening this in Telegram?');
+          }
+        } else {
+          console.error('Telegram WebApp is not available');
+          setError('This app must be opened in Telegram');
         }
+      } catch (error) {
+        console.error('Error accessing Telegram WebApp:', error);
+        setError('Error accessing Telegram features');
       }
     };
 
-    initWebApp();
+    getTelegramId();
   }, []);
 
-  // Check Wallet Connection
+  // Monitor wallet connection
   useEffect(() => {
     const checkWalletConnection = () => {
       if (tonConnectUI.connected && tonConnectUI.account?.address) {
         setIsWalletConnected(true);
         setWalletAddress(tonConnectUI.account.address);
-        updateWalletInDatabase(tonConnectUI.account.address); // Update wallet in the database
+        updateWalletInDatabase(tonConnectUI.account.address);
       } else {
         setIsWalletConnected(false);
         setWalletAddress(null);
@@ -55,7 +97,7 @@ export default function AirdropTasks() {
       if (wallet) {
         setIsWalletConnected(true);
         setWalletAddress(wallet.account.address);
-        updateWalletInDatabase(wallet.account.address); // Update wallet when status changes
+        updateWalletInDatabase(wallet.account.address);
       } else {
         setIsWalletConnected(false);
         setWalletAddress(null);
@@ -67,11 +109,12 @@ export default function AirdropTasks() {
     };
   }, [tonConnectUI]);
 
-  // Update Wallet Address in Database
+  // Update wallet in database
   const updateWalletInDatabase = async (address: string) => {
     try {
       if (!telegramId) {
-        throw new Error('No Telegram ID available');
+        console.warn('No Telegram ID available for wallet update');
+        return;
       }
 
       const response = await fetch('/api/update-wallet', {
@@ -94,13 +137,11 @@ export default function AirdropTasks() {
       console.log('Wallet updated successfully:', result);
       return result;
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to update wallet');
       console.error('Error updating wallet:', error);
-      throw error;
     }
   };
 
-  // Handle Transaction
+  // Handle TON transaction
   const handleSendTransaction = async () => {
     if (!tonConnectUI.connected) {
       setError('Please connect your wallet first');
@@ -111,8 +152,8 @@ export default function AirdropTasks() {
     setError(null);
 
     try {
-      // Convert 0.2 TON to nanotons
-      const amountInNanotons = '200000000'; // 0.2 TON = 200,000,000 nanotons
+      // Convert 0.2 TON to nanotons (1 TON = 1,000,000,000 nanotons)
+      const amountInNanotons = '200000000'; // 0.2 TON
 
       const transaction = {
         validUntil: Math.floor(Date.now() / 1000) + 300, // 5 minutes from now
@@ -124,13 +165,33 @@ export default function AirdropTasks() {
         ],
       };
 
-      console.log('Sending transaction:', transaction);
+      console.log('Initiating transaction:', transaction);
       const result = await tonConnectUI.sendTransaction(transaction);
       console.log('Transaction result:', result);
 
       if (result) {
         setIsTransactionCompleted(true);
-        setError(null);
+        
+        // Update transaction status in database
+        try {
+          const response = await fetch('/api/update-transaction-status', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              telegram_id: telegramId,
+              transaction_hash: result.boc, // or however the hash is returned
+              status: 'completed'
+            }),
+          });
+
+          if (!response.ok) {
+            console.error('Failed to update transaction status in database');
+          }
+        } catch (error) {
+          console.error('Error updating transaction status:', error);
+        }
       } else {
         throw new Error('Transaction failed to process');
       }
@@ -144,6 +205,16 @@ export default function AirdropTasks() {
 
   return (
     <div className="w-full max-w-md backdrop-blur-sm bg-white/10 rounded-xl shadow-xl p-6">
+      {/* Telegram Status Indicator */}
+      {!telegramId && (
+        <div className="mb-4 p-3 bg-yellow-500/20 border border-yellow-500/30 rounded-lg">
+          <p className="text-yellow-200 text-sm">
+            Please open this app in Telegram to access all features
+          </p>
+        </div>
+      )}
+
+      {/* Header */}
       <div className="flex items-center gap-2 mb-6">
         <Gift className="w-8 h-8 text-red-500" />
         <h1 className="text-2xl font-bold text-white">Holiday Airdrop Tasks</h1>
@@ -200,7 +271,8 @@ export default function AirdropTasks() {
 
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-sm text-gray-200 mb-2">
+              <p className="text-sm text-gray-200 mb-2"></antArtifact>
+<p className="text-sm text-gray-200 mb-2">
                 Send 0.2 TON to participate in the holiday airdrop
               </p>
               {error && (

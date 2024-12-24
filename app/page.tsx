@@ -144,6 +144,8 @@ const initializeUser = async (
     // Get current coin balance from localStorage
     const currentCoins = localStorage.getItem('coins');
     const coinBalance = currentCoins ? parseInt(currentCoins, 10) : 0;
+    const storedAddress = localStorage.getItem("walletAddress")
+
 
     // Update coin balance in database using existing /api/user endpoint
     const coinUpdateResponse = await fetch('/api/user', {
@@ -153,14 +155,13 @@ const initializeUser = async (
         telegram_id,
         telegram_username,
         coin_balance: coinBalance,
+        wallet_address: storedAddress,
       }),
     });
 
     if (!coinUpdateResponse.ok) {
       throw new Error(`Failed to update coin balance: ${coinUpdateResponse.status}`);
     }
-
-    const storedAddress = localStorage.getItem("walletAddress")
 
     // Only initialize user if they haven't opened the app before
     if (!hasOpenedBefore) {
@@ -172,8 +173,7 @@ const initializeUser = async (
           telegram_username,
           referrer_id: startParameter,
           coin_balance: coinBalance,
-          wallet_address: storedAddress
-        }),
+          }),
       });
 
       if (!response.ok) {

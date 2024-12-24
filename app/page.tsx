@@ -130,29 +130,29 @@ export default function Home() {
     };
   }, []);
 
-  //connect to Ton helper function
-const connectToTON = async (telegram_id: string): Promise<void> => {
+ //connect to Ton helper function
+const connectToTON = async (telegram_id: string): Promise<string | null> => {
   try {
-    const { TonConnect } = await import('@tonconnect/sdk'); // Import TON Connect SDK
+    const { TonConnect } = await import('@tonconnect/sdk');
     const tonConnect = new TonConnect();
 
     // Check if a wallet is connected
     const wallet = tonConnect.wallet;
     if (!wallet) {
       console.log('No wallet connected');
-      return; // Exit early if no wallet is connected
+      return null;
     }
 
     const walletAddress = wallet.account.address;
     console.log('Wallet connected:', walletAddress);
 
-    // Insert the wallet address into the database
-    const response = await fetch('/api/update-wallet', {
+    // Update the wallet address using the user API
+    const response = await fetch('/api/user', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         telegram_id,
-        wallet_address: walletAddress,
+        wallet_address: walletAddress
       }),
     });
 
@@ -161,11 +161,12 @@ const connectToTON = async (telegram_id: string): Promise<void> => {
     }
 
     console.log('Wallet address successfully updated in the database');
+    return walletAddress;
   } catch (error) {
     console.error('Error connecting to TON or updating the database:', error);
+    return null;
   }
 };
-
 
 // Initialize the user 
 const initializeUser = async (
@@ -196,22 +197,8 @@ const initializeUser = async (
       throw new Error(`Failed to update coin balance: ${coinUpdateResponse.status}`);
     }
 
-    // Fetch the user's wallet address from TON Connect
-    const wallet = await connectToTON(telegram_id);
-
-    // Update the user's wallet address in the database
-    const walletResponse = await fetch('/api/update-wallet', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ telegram_id, wallet_address: wallet }),
-    });
-
-    if (!walletResponse.ok) {
-      throw new Error(`Failed to update wallet: ${walletResponse.status}`);
-    }
-
-    const walletData = await walletResponse.json();
-    console.log('Wallet address updated successfully:', walletData);
+    // Connect to TON and update wallet address
+    const walletAddress = await connectToTON(telegram_id);
 
     // Only initialize user if they haven't opened the app before
     if (!hasOpenedBefore) {
@@ -223,6 +210,7 @@ const initializeUser = async (
           telegram_username,
           referrer_id: startParameter,
           coin_balance: coinBalance,
+          wallet_address: walletAddress
         }),
       });
 
@@ -249,7 +237,6 @@ const initializeUser = async (
     return { success: false, error: 'Initialization failed' };
   }
 };
-
 
   // Telegram WebApp Initialization
   useEffect(() => {

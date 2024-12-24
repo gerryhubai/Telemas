@@ -2,14 +2,6 @@ import { NextResponse } from 'next/server';
 
 const tasks = [
   {
-    id: 0,
-    title: "Play Dapp Farm",
-    description: "Play, learn and earn with our partners",
-    link: "https://t.me/DappFarmBot/earn",
-    reward: 1500,
-    emoji: "🎮"
-  },
-  {
     id: 7,
     title: "Join our Telegram Channel",
     description: "Join our Telegram channel for the latest updates!",

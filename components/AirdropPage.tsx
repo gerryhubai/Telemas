@@ -12,6 +12,7 @@ export default function AirdropPage() {
   const handleWalletConnection = useCallback((address: string) => {
     setTonWalletAddress(address);
     console.log("Wallet connected successfully!");
+    localStorage.setItem("walletAddress", address);
     setIsLoading(false);
   }, []);
 

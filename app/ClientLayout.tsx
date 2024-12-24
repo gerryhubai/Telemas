@@ -2,7 +2,6 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bell, Users, CheckSquare } from 'lucide-react';
 import { TonConnectUIProvider } from '@tonconnect/ui-react';
 
 const manifestUrl = 'https://gray-accused-harrier-397.mypinata.cloud/ipfs/bafkreigcw6dmtntan4rn2eorbyencyeg6mjd7nrz7ioxpvurel26zcwgjy';
@@ -64,26 +63,6 @@ const ClientLayout = ({ children }: { children: React.ReactNode }) => {
         <main className={`flex-grow ${isMainPage ? '' : 'overflow-auto pb-20'}`}>
           {children}
         </main>
-        <footer className="bg-red-900 text-white py-4 px-6 flex justify-between items-center fixed bottom-0 left-0 right-0 z-30">
-          <div className="flex items-center space-x-4">
-            <NavLink href="/dailychest">
-              <img src="telemas-treasure-chest.png" alt="Quest Chest" className="w-8 h-8" />
-            </NavLink>
-            <Link href="/">
-              <span className="font-bold text-4xl cursor-pointer">🎅</span>
-            </Link>
-          </div>
-          <nav className="flex space-x-8">
-            <NavLink href="/friends">
-              <Users size={24} />
-              <span className="text-lg">Friends</span>
-            </NavLink>
-            <NavLink href="/tasks">
-              <CheckSquare size={24} />
-              <span className="text-lg">Tasks</span>
-            </NavLink>
-          </nav>
-        </footer>
       </div>
     </TonConnectUIProvider>
   );

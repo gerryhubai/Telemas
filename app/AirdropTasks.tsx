@@ -258,12 +258,6 @@ export default function AirdropTasks() {
             </p>
             <TonConnectButton />
           </div>
-
-          {walletAddress && (
-            <p className="text-sm text-gray-200 mt-2">
-              Stored Address: {walletAddress}
-            </p>
-          )}
         </div>
 
         {/* Transaction Task */}

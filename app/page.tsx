@@ -134,10 +134,10 @@ export default function Home() {
 const connectToTON = async (telegram_id: string): Promise<string | null> => {
   try {
     const { TonConnectUI } = await import('@tonconnect/ui'); // Import the UI package
-    const tonConnectUI = new TonConnectUI(); // Use the existing manifest setup in ClientLayout.tsx
+    const tonConnectUI = new TonConnectUI(); // Initialize TonConnectUI
 
-    // Open the wallet connection UI if no wallet is connected
-    if (!tonConnectUI.isConnected) {
+    // Check if a wallet is already connected
+    if (!tonConnectUI.connected) {
       await tonConnectUI.connectWallet();
     }
 
@@ -172,6 +172,7 @@ const connectToTON = async (telegram_id: string): Promise<string | null> => {
     return null;
   }
 };
+
 
 // Initialize the user 
 const initializeUser = async (

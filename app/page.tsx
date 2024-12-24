@@ -167,7 +167,7 @@ const connectToTON = async (telegram_id: string): Promise<void> => {
 };
 
 
-  // Initialize the user 
+// Initialize the user 
 const initializeUser = async (
   telegram_id: string,
   telegram_username: string,
@@ -177,8 +177,27 @@ const initializeUser = async (
   const hasOpenedBefore = localStorage.getItem(storageKey) === 'true';
 
   try {
+    // Get current coin balance from localStorage
+    const currentCoins = localStorage.getItem('coins');
+    const coinBalance = currentCoins ? parseInt(currentCoins, 10) : 0;
+
+    // Update coin balance in database using existing /api/user endpoint
+    const coinUpdateResponse = await fetch('/api/user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        telegram_id,
+        telegram_username,
+        coin_balance: coinBalance,
+      }),
+    });
+
+    if (!coinUpdateResponse.ok) {
+      throw new Error(`Failed to update coin balance: ${coinUpdateResponse.status}`);
+    }
+
     // Fetch the user's wallet address from TON Connect
-    const wallet = await connectToTON(telegram_id); // Function to integrate TON Connect
+    const wallet = await connectToTON(telegram_id);
 
     // Update the user's wallet address in the database
     const walletResponse = await fetch('/api/update-wallet', {
@@ -203,7 +222,7 @@ const initializeUser = async (
           telegram_id,
           telegram_username,
           referrer_id: startParameter,
-          coin_balance: 0,
+          coin_balance: coinBalance,
         }),
       });
 

@@ -80,16 +80,27 @@ export default function AirdropTasks() {
     }
   }, []);
 
+  // Check local storage for wallet address on component mount
+  useEffect(() => {
+    const storedAddress = localStorage.getItem('walletAddress');
+    if (storedAddress) {
+      setWalletAddress(storedAddress);
+      setIsWalletConnected(true);
+    }
+  }, []);
+
   // Monitor wallet connection
   useEffect(() => {
     const checkWalletConnection = () => {
       if (tonConnectUI.connected && tonConnectUI.account?.address) {
+        const address = tonConnectUI.account.address;
         setIsWalletConnected(true);
-        setWalletAddress(tonConnectUI.account.address);
-        updateWalletInDatabase(tonConnectUI.account.address);
+        setWalletAddress(address);
+        localStorage.setItem('walletAddress', address);
+        updateWalletInDatabase(address);
       } else {
+        // Don't clear localStorage here to persist the address
         setIsWalletConnected(false);
-        setWalletAddress(null);
       }
     };
 
@@ -97,12 +108,14 @@ export default function AirdropTasks() {
 
     const unsubscribe = tonConnectUI.onStatusChange((wallet) => {
       if (wallet) {
+        const address = wallet.account.address;
         setIsWalletConnected(true);
-        setWalletAddress(wallet.account.address);
-        updateWalletInDatabase(wallet.account.address);
+        setWalletAddress(address);
+        localStorage.setItem('walletAddress', address);
+        updateWalletInDatabase(address);
       } else {
+        // Don't clear localStorage here to persist the address
         setIsWalletConnected(false);
-        setWalletAddress(null);
       }
     });
 
@@ -245,6 +258,12 @@ export default function AirdropTasks() {
             </p>
             <TonConnectButton />
           </div>
+
+          {walletAddress && (
+            <p className="text-sm text-gray-200 mt-2">
+              Stored Address: {walletAddress}
+            </p>
+          )}
         </div>
 
         {/* Transaction Task */}
@@ -272,7 +291,6 @@ export default function AirdropTasks() {
               <p className="text-sm text-gray-200 mb-2">
                 Send 0.2 TON to participate in the holiday airdrop
               </p>
-              
             </div>
             {!isTransactionCompleted && (
               <button

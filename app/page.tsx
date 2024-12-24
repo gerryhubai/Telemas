@@ -3,7 +3,7 @@ import AirdropTasks from './AirdropTasks';
 
 const Page: React.FC = () => {
   return (
-    <div className="min-h-screen bg-lightBlueGradient flex flex-col items-center py-10">
+    <div className="min-h-screen bg-green flex flex-col items-center py-10">
       <div className="text-center mb-6">
         <h1 className="text-3xl font-bold text-gray-800">
           This is just the beginning.

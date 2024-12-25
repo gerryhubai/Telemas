@@ -14,6 +14,7 @@ interface UserData {
 export default function SnapshotPage() {
   const [tonConnectUI] = useTonConnectUI();
   const [tonWalletAddress, setTonWalletAddress] = useState<string | null>(null);
+  const [pendingWalletAddress, setPendingWalletAddress] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [allocation, setAllocation] = useState<number | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
@@ -33,16 +34,37 @@ export default function SnapshotPage() {
     }
   }, []);
 
-  // Handle wallet updates
+  // Handle wallet updates - now only stores pending wallet address
+  useEffect(() => {
+    const currentWallet = tonConnectUI.account?.address;
+    if (currentWallet) {
+      setPendingWalletAddress(currentWallet);
+    } else {
+      setPendingWalletAddress(null);
+      setTonWalletAddress(null);
+    }
+    
+    if (isInitialLoad) {
+      setIsInitialLoad(false);
+    }
+  }, [tonConnectUI.account, isInitialLoad]);
+
+  // Subscribe to wallet status changes
+  useEffect(() => {
+    const unsubscribe = tonConnectUI.onStatusChange(async (wallet) => {
+      setIsInitialLoad(true);
+    });
+
+    return () => unsubscribe();
+  }, [tonConnectUI]);
+
+  // Update wallet address in backend after allocation is shown
   useEffect(() => {
     const updateWallet = async () => {
-      const currentWallet = tonConnectUI.account?.address;
-      
-      if (currentWallet && userData?.id) {
-        console.log('Updating wallet...', {
-          wallet: currentWallet,
-          telegramId: userData.id,
-          isInitialLoad
+      if (pendingWalletAddress && userData?.id && !isLoading && allocation !== null) {
+        console.log('Updating wallet after allocation shown...', {
+          wallet: pendingWalletAddress,
+          telegramId: userData.id
         });
 
         try {
@@ -53,7 +75,7 @@ export default function SnapshotPage() {
             },
             body: JSON.stringify({
               telegram_id: userData.id.toString(),
-              wallet_address: currentWallet,
+              wallet_address: pendingWalletAddress,
             }),
           });
 
@@ -64,31 +86,16 @@ export default function SnapshotPage() {
           const result = await response.json();
           console.log('Wallet update result:', result);
           
-          setTonWalletAddress(currentWallet);
+          setTonWalletAddress(pendingWalletAddress);
         } catch (err) {
           console.error('Wallet update failed:', err);
           setError('Failed to update wallet');
         }
-      } else if (!currentWallet) {
-        setTonWalletAddress(null);
       }
     };
 
-    // Update on initial load or wallet changes
-    if (isInitialLoad || tonConnectUI.connected) {
-      updateWallet();
-      setIsInitialLoad(false);
-    }
-  }, [tonConnectUI.account, userData, isInitialLoad]);
-
-  // Subscribe to wallet status changes
-  useEffect(() => {
-    const unsubscribe = tonConnectUI.onStatusChange(async (wallet) => {
-      setIsInitialLoad(true); // Trigger a new update cycle
-    });
-
-    return () => unsubscribe();
-  }, [tonConnectUI]);
+    updateWallet();
+  }, [pendingWalletAddress, userData, allocation, isLoading]);
 
   const handleWalletAction = async () => {
     if (tonConnectUI.connected) {
@@ -196,10 +203,10 @@ export default function SnapshotPage() {
           </h1>
           
           <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6">
-            {tonWalletAddress ? (
+            {pendingWalletAddress ? (
               <div className="text-center">
                 <p className="text-lg mb-4 text-white">
-                  Connected: {formatAddress(tonWalletAddress)}
+                  Connected: {formatAddress(pendingWalletAddress)}
                 </p>
                 <button
                   onClick={handleWalletAction}
@@ -221,7 +228,7 @@ export default function SnapshotPage() {
           </div>
         </div>
 
-        {tonWalletAddress && (
+        {pendingWalletAddress && (
           <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 text-center mt-4">
             {isLoading ? (
               <div className="flex flex-col items-center space-y-4">

@@ -19,21 +19,19 @@ export default function SnapshotPage() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [walletUpdatePending, setWalletUpdatePending] = useState(true);
+  const [initialized, setInitialized] = useState(false);
 
-  const updateWalletInDatabase = async (address: string) => {
+  const updateWalletInDatabase = async (address: string, telegramId: number) => {
     try {
-      if (!userData?.id) {
-        console.log('Waiting for user data...');
-        return;
-      }
-
+      console.log('Updating wallet address:', address, 'for telegram ID:', telegramId);
+      
       const response = await fetch('/api/user', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          telegram_id: userData.id.toString(),
+          telegram_id: telegramId.toString(),
           wallet_address: address,
         }),
       });
@@ -42,81 +40,69 @@ export default function SnapshotPage() {
         throw new Error('Failed to update wallet address');
       }
 
+      const data = await response.json();
+      console.log('Wallet update response:', data);
+
       setWalletUpdatePending(false);
-      console.log('Wallet address updated successfully');
     } catch (error) {
       console.error('Error updating wallet:', error);
       setError('Failed to update wallet address');
     }
   };
 
-  const handleWalletConnection = useCallback(async (address: string) => {
+  // Initialize user data from WebApp
+  useEffect(() => {
     try {
-      setIsLoading(true);
-      setTonWalletAddress(address);
-      if (userData?.id) {
-        await updateWalletInDatabase(address);
-      }
-      setError(null);
-    } catch (error) {
-      console.error('Connection error:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [userData]);
-
-  const handleWalletDisconnection = useCallback(() => {
-    setTonWalletAddress(null);
-    setIsLoading(false);
-    setError(null);
-    setWalletUpdatePending(true);
-  }, []);
-
-  useEffect(() => {
-    const initializeWebApp = () => {
-      try {
-        const user = WebApp.initDataUnsafe.user as UserData | undefined;
-        if (user) {
-          setUserData(user);
-        } else {
-          console.error('No user data available');
-        }
-      } catch (error) {
-        console.error('Error initializing WebApp:', error);
-      }
-    };
-
-    initializeWebApp();
-  }, []);
-
-  useEffect(() => {
-    const checkWalletConnection = async () => {
-      if (tonConnectUI.account?.address && userData?.id) {
-        await handleWalletConnection(tonConnectUI.account.address);
-      }
-    };
-
-    if (userData) {
-      checkWalletConnection();
-    }
-
-    const unsubscribe = tonConnectUI.onStatusChange(async (wallet) => {
-      if (wallet) {
-        await handleWalletConnection(wallet.account.address);
+      const user = WebApp.initDataUnsafe.user as UserData | undefined;
+      if (user) {
+        setUserData(user);
+        console.log('User data initialized:', user);
       } else {
-        handleWalletDisconnection();
+        console.error('No user data available');
+      }
+    } catch (error) {
+      console.error('Error initializing WebApp:', error);
+    }
+  }, []);
+
+  // Handle initial wallet connection and updates
+  useEffect(() => {
+    const initializeWallet = async () => {
+      // Check if we have both wallet and user data
+      const currentWallet = tonConnectUI.account?.address;
+      
+      if (currentWallet && userData?.id && !initialized) {
+        console.log('Initializing with wallet:', currentWallet);
+        setTonWalletAddress(currentWallet);
+        await updateWalletInDatabase(currentWallet, userData.id);
+        setInitialized(true);
+      }
+    };
+
+    initializeWallet();
+
+    // Subscribe to wallet changes
+    const unsubscribe = tonConnectUI.onStatusChange(async (wallet) => {
+      if (wallet && userData?.id) {
+        console.log('Wallet status changed:', wallet.account.address);
+        setTonWalletAddress(wallet.account.address);
+        await updateWalletInDatabase(wallet.account.address, userData.id);
+      } else {
+        setTonWalletAddress(null);
+        setWalletUpdatePending(true);
       }
     });
 
     return () => {
       unsubscribe();
     };
-  }, [tonConnectUI, handleWalletConnection, handleWalletDisconnection, userData]);
+  }, [tonConnectUI, userData, initialized]);
 
   const handleWalletAction = async () => {
     if (tonConnectUI.connected) {
       setIsLoading(true);
       await tonConnectUI.disconnect();
+      setIsLoading(false);
     } else {
       await tonConnectUI.openModal();
     }
@@ -164,7 +150,7 @@ export default function SnapshotPage() {
       try {
         const collectedCards = JSON.parse(localStorage.getItem('collectedCards') || '{}');
         const cardCount = Object.keys(collectedCards).length;
-        baseAllocation += cardCount * 3;  // 3 tokens per card
+        baseAllocation += cardCount * 1000;  // 1000 tokens per card
       } catch (e) {
         console.error('Error parsing collected cards:', e);
       }

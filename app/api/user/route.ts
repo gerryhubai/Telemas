@@ -41,14 +41,15 @@ export async function POST(request: Request) {
       DO UPDATE SET 
         telegram_username = EXCLUDED.telegram_username,
         country = EXCLUDED.country,
-        coin_balance = EXCLUDED.coin_balance,
-        wallet_address = EXCLUDED.wallet_address,
-        airdropped_value = EXCLUDED.airdropped_value,
+        coin_balance = COALESCE(EXCLUDED.coin_balance, users.coin_balance),
+        wallet_address = COALESCE(EXCLUDED.wallet_address, users.wallet_address),
+        airdropped_value = COALESCE(EXCLUDED.airdropped_value, users.airdropped_value),
         last_update = CURRENT_TIMESTAMP
     `;
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error('Database error:', error);
     return NextResponse.json({ success: false, error: (error as Error).message });
   }
 }
@@ -60,26 +61,37 @@ export async function GET(request: Request) {
 
   if (rewardEvent && rewardEvent === 'true' && telegram_id) {
     try {
-      // Simulate reward logic (update coin balance for example)
       await sql`
         UPDATE users 
         SET coin_balance = coin_balance + 500
         WHERE telegram_id = ${telegram_id}
       `;
 
-      return NextResponse.json({ success: true, message: `Reward applied to user ${telegram_id}` });
+      return NextResponse.json({ 
+        success: true, 
+        message: `Reward applied to user ${telegram_id}` 
+      });
     } catch (error) {
-      return NextResponse.json({ success: false, error: (error as Error).message });
+      console.error('Reward error:', error);
+      return NextResponse.json({ 
+        success: false, 
+        error: (error as Error).message 
+      });
     }
   }
 
   if (!telegram_id) {
-    return NextResponse.json({ success: false, error: 'Telegram ID is required' });
+    return NextResponse.json({ 
+      success: false, 
+      error: 'Telegram ID is required' 
+    });
   }
 
   try {
     const referralCount = await sql`
-      SELECT COUNT(*) FROM users WHERE referrer_id = ${telegram_id}
+      SELECT COUNT(*) 
+      FROM users 
+      WHERE referrer_id = ${telegram_id}
     `;
 
     const userInfo = await sql`
@@ -89,10 +101,20 @@ export async function GET(request: Request) {
         country, 
         coin_balance, 
         wallet_address, 
-        airdropped_value 
+        airdropped_value,
+        created_at,
+        last_update,
+        referrer_id
       FROM users 
       WHERE telegram_id = ${telegram_id}
     `;
+
+    if (userInfo.rows.length === 0) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'User not found' 
+      });
+    }
 
     return NextResponse.json({ 
       success: true, 
@@ -100,6 +122,10 @@ export async function GET(request: Request) {
       userInfo: userInfo.rows[0]
     });
   } catch (error) {
-    return NextResponse.json({ success: false, error: (error as Error).message });
+    console.error('Query error:', error);
+    return NextResponse.json({ 
+      success: false, 
+      error: (error as Error).message 
+    });
   }
 }

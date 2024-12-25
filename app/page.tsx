@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import { Address } from '@ton/core';
 import WebApp from '@twa-dev/sdk';
@@ -18,85 +18,77 @@ export default function SnapshotPage() {
   const [allocation, setAllocation] = useState<number | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [walletUpdatePending, setWalletUpdatePending] = useState(true);
-  const [initialized, setInitialized] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-  const updateWalletInDatabase = async (address: string, telegramId: number) => {
-    try {
-      console.log('Updating wallet address:', address, 'for telegram ID:', telegramId);
-      
-      const response = await fetch('/api/user', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          telegram_id: telegramId.toString(),
-          wallet_address: address,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update wallet address');
-      }
-
-      const data = await response.json();
-      console.log('Wallet update response:', data);
-
-      setWalletUpdatePending(false);
-    } catch (error) {
-      console.error('Error updating wallet:', error);
-      setError('Failed to update wallet address');
-    }
-  };
-
-  // Initialize user data from WebApp
+  // Initialize user data
   useEffect(() => {
     try {
       const user = WebApp.initDataUnsafe.user as UserData | undefined;
-      if (user) {
+      if (user?.id) {
         setUserData(user);
-        console.log('User data initialized:', user);
-      } else {
-        console.error('No user data available');
+        console.log('User data loaded:', user.id);
       }
     } catch (error) {
-      console.error('Error initializing WebApp:', error);
+      console.error('WebApp initialization error:', error);
     }
   }, []);
 
-  // Handle initial wallet connection and updates
+  // Handle wallet updates
   useEffect(() => {
-    const initializeWallet = async () => {
-      // Check if we have both wallet and user data
+    const updateWallet = async () => {
       const currentWallet = tonConnectUI.account?.address;
       
-      if (currentWallet && userData?.id && !initialized) {
-        console.log('Initializing with wallet:', currentWallet);
-        setTonWalletAddress(currentWallet);
-        await updateWalletInDatabase(currentWallet, userData.id);
-        setInitialized(true);
+      if (currentWallet && userData?.id) {
+        console.log('Updating wallet...', {
+          wallet: currentWallet,
+          telegramId: userData.id,
+          isInitialLoad
+        });
+
+        try {
+          const response = await fetch('/api/user', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              telegram_id: userData.id.toString(),
+              wallet_address: currentWallet,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to update wallet');
+          }
+
+          const result = await response.json();
+          console.log('Wallet update result:', result);
+          
+          setTonWalletAddress(currentWallet);
+        } catch (err) {
+          console.error('Wallet update failed:', err);
+          setError('Failed to update wallet');
+        }
+      } else if (!currentWallet) {
+        setTonWalletAddress(null);
       }
     };
 
-    initializeWallet();
+    // Update on initial load or wallet changes
+    if (isInitialLoad || tonConnectUI.connected) {
+      updateWallet();
+      setIsInitialLoad(false);
+    }
+  }, [tonConnectUI.account, userData, isInitialLoad]);
 
-    // Subscribe to wallet changes
+  // Subscribe to wallet status changes
+  useEffect(() => {
     const unsubscribe = tonConnectUI.onStatusChange(async (wallet) => {
-      if (wallet && userData?.id) {
-        console.log('Wallet status changed:', wallet.account.address);
-        setTonWalletAddress(wallet.account.address);
-        await updateWalletInDatabase(wallet.account.address, userData.id);
-      } else {
-        setTonWalletAddress(null);
-        setWalletUpdatePending(true);
-      }
+      setIsInitialLoad(true); // Trigger a new update cycle
     });
 
-    return () => {
-      unsubscribe();
-    };
-  }, [tonConnectUI, userData, initialized]);
+    return () => unsubscribe();
+  }, [tonConnectUI]);
 
   const handleWalletAction = async () => {
     if (tonConnectUI.connected) {
@@ -119,7 +111,6 @@ export default function SnapshotPage() {
     setIsLoading(true);
     
     try {
-      // Get user info from database
       const response = await fetch(`/api/user?telegram_id=${userData.id}`);
       const data = await response.json();
       
@@ -132,34 +123,32 @@ export default function SnapshotPage() {
       const createdAt = new Date(userInfo.created_at);
       const coins = parseInt(localStorage.getItem('coins') || '0');
       
-      // New allocation calculation logic
+      // Base allocation calculation
       let baseAllocation: number;
       const now = new Date();
       const daysSinceCreation = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
 
-      // Base allocation based on join date
-      if (daysSinceCreation > 30) {  // Early users (joined more than 30 days ago)
-        baseAllocation = Math.min(25000 + (coins * 0.1), 50000);  // Cap at 50k
-      } else if (daysSinceCreation > 14) {  // Medium-term users
-        baseAllocation = Math.min(15000 + (coins * 0.08), 30000);  // Cap at 30k
-      } else {  // Recent users
-        baseAllocation = Math.min(10000 + (coins * 0.05), 20000);  // Cap at 20k
+      if (daysSinceCreation > 30) {
+        baseAllocation = Math.min(25000 + (coins * 0.1), 50000);
+      } else if (daysSinceCreation > 14) {
+        baseAllocation = Math.min(15000 + (coins * 0.08), 30000);
+      } else {
+        baseAllocation = Math.min(10000 + (coins * 0.05), 20000);
       }
 
-      // Add bonus from collected cards
+      // Add bonus for upgraded cards (3 tokens per card)
       try {
         const collectedCards = JSON.parse(localStorage.getItem('collectedCards') || '{}');
         const cardCount = Object.keys(collectedCards).length;
-        baseAllocation += cardCount * 1000;  // 1000 tokens per card
+        baseAllocation += cardCount * 3;  // 3 tokens per card
       } catch (e) {
         console.error('Error parsing collected cards:', e);
       }
 
-      // Final cap to ensure reasonable distribution
       const finalAllocation = Math.min(baseAllocation, 100000);
 
       // Update allocation in database
-      await fetch('/api/user', {
+      const updateResponse = await fetch('/api/user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -167,6 +156,10 @@ export default function SnapshotPage() {
           airdropped_value: finalAllocation
         })
       });
+
+      if (!updateResponse.ok) {
+        throw new Error('Failed to update allocation');
+      }
 
       setAllocation(finalAllocation);
     } catch (error) {
@@ -179,7 +172,6 @@ export default function SnapshotPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-red-900 to-green-900 flex flex-col items-center justify-start p-4">
-      {/* Snowfall effect */}
       <div className="absolute inset-0 pointer-events-none">
         {[...Array(50)].map((_, i) => (
           <div
@@ -198,7 +190,6 @@ export default function SnapshotPage() {
       </div>
 
       <div className="relative z-10 w-full max-w-md">
-        {/* Connect Wallet Section */}
         <div className="text-center mb-8 mt-12">
           <h1 className="text-3xl font-bold text-white mb-4">
             🎄 Christmas Airdrop Snapshot 🎄
@@ -230,8 +221,7 @@ export default function SnapshotPage() {
           </div>
         </div>
 
-        {/* Allocation Display */}
-        {tonWalletAddress && !walletUpdatePending && (
+        {tonWalletAddress && (
           <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 text-center mt-4">
             {isLoading ? (
               <div className="flex flex-col items-center space-y-4">

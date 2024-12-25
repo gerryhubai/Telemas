@@ -5,7 +5,7 @@ import fetch from 'node-fetch';
 async function getCountryFromIP(ip: string): Promise<string> {
   try {
     const response = await fetch(`https://ipapi.co/${ip}/country_name/`);
-    return await response.text() || 'Unknown';
+    return (await response.text()) || 'Unknown';
   } catch (error) {
     console.error('Error fetching country:', error);
     return 'Unknown';
@@ -13,19 +13,37 @@ async function getCountryFromIP(ip: string): Promise<string> {
 }
 
 export async function POST(request: Request) {
-  const { telegram_id, telegram_username, referrer_id, coin_balance } = await request.json();
+  const { telegram_id, telegram_username, referrer_id, coin_balance, wallet_address, airdropped_value } = await request.json();
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0] || '0.0.0.0';
   const country = await getCountryFromIP(ip);
 
   try {
     await sql`
-      INSERT INTO users (telegram_id, telegram_username, country, referrer_id, coin_balance)
-      VALUES (${telegram_id}, ${telegram_username}, ${country}, ${referrer_id}, ${coin_balance})
+      INSERT INTO users (
+        telegram_id, 
+        telegram_username, 
+        country, 
+        referrer_id, 
+        coin_balance, 
+        wallet_address, 
+        airdropped_value
+      )
+      VALUES (
+        ${telegram_id}, 
+        ${telegram_username}, 
+        ${country}, 
+        ${referrer_id}, 
+        ${coin_balance}, 
+        ${wallet_address}, 
+        ${airdropped_value}
+      )
       ON CONFLICT (telegram_id) 
       DO UPDATE SET 
         telegram_username = EXCLUDED.telegram_username,
         country = EXCLUDED.country,
         coin_balance = EXCLUDED.coin_balance,
+        wallet_address = EXCLUDED.wallet_address,
+        airdropped_value = EXCLUDED.airdropped_value,
         last_update = CURRENT_TIMESTAMP
     `;
 
@@ -41,7 +59,6 @@ export async function GET(request: Request) {
   const rewardEvent = searchParams.get('reward');
 
   if (rewardEvent && rewardEvent === 'true' && telegram_id) {
-    // Handle the reward event
     try {
       // Simulate reward logic (update coin balance for example)
       await sql`
@@ -65,7 +82,23 @@ export async function GET(request: Request) {
       SELECT COUNT(*) FROM users WHERE referrer_id = ${telegram_id}
     `;
 
-    return NextResponse.json({ success: true, referralCount: referralCount.rows[0].count });
+    const userInfo = await sql`
+      SELECT 
+        telegram_id, 
+        telegram_username, 
+        country, 
+        coin_balance, 
+        wallet_address, 
+        airdropped_value 
+      FROM users 
+      WHERE telegram_id = ${telegram_id}
+    `;
+
+    return NextResponse.json({ 
+      success: true, 
+      referralCount: referralCount.rows[0].count,
+      userInfo: userInfo.rows[0]
+    });
   } catch (error) {
     return NextResponse.json({ success: false, error: (error as Error).message });
   }

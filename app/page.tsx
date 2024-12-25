@@ -1,52 +1,123 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { useTonConnect } from '@/hooks/useTonConnect';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useTonConnectUI } from '@tonconnect/ui-react';
+import { Address } from '@ton/core';
+import WebApp from '@twa-dev/sdk';
 import { LoaderCircle, Gift } from 'lucide-react';
 
+interface UserData {
+  id: number;
+  username?: string;
+}
+
 export default function SnapshotPage() {
-  const { connected, wallet, connect } = useTonConnect();
+  const [tonConnectUI] = useTonConnectUI();
+  const [tonWalletAddress, setTonWalletAddress] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [allocation, setAllocation] = useState<number | null>(null);
-  const [telegramId, setTelegramId] = useState('');
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const initWebApp = async () => {
-      if (typeof window !== 'undefined') {
-        const WebApp = (await import('@twa-dev/sdk')).default;
-        const user = WebApp.initDataUnsafe.user;
-        if (user) {
-          setTelegramId(user.id.toString());
-        }
+  const updateWalletInDatabase = async (address: string) => {
+    try {
+      if (!userData?.id) {
+        throw new Error('No Telegram ID available');
       }
-    };
 
-    initWebApp();
+      await fetch('/api/user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          telegram_id: userData.id.toString(),
+          wallet_address: address,
+        }),
+      });
+    } catch (error) {
+      console.error('Error updating wallet:', error);
+    }
+  };
+
+  const handleWalletConnection = useCallback(async (address: string) => {
+    try {
+      setIsLoading(true);
+      await updateWalletInDatabase(address);
+      setTonWalletAddress(address);
+      setError(null);
+    } catch (error) {
+      console.error('Connection error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const handleWalletDisconnection = useCallback(() => {
+    setTonWalletAddress(null);
+    setIsLoading(false);
+    setError(null);
   }, []);
 
   useEffect(() => {
-    const updateWalletAddress = async () => {
-      if (connected && wallet && telegramId) {
-        try {
-          await fetch('/api/user', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              telegram_id: telegramId,
-              wallet_address: wallet
-            })
-          });
-        } catch (error) {
-          console.error('Error updating wallet address:', error);
+    const initializeWebApp = () => {
+      try {
+        const user = WebApp.initDataUnsafe.user as UserData | undefined;
+        if (user) {
+          setUserData(user);
+        } else {
+          console.error('No user data available');
         }
+      } catch (error) {
+        console.error('Error initializing WebApp:', error);
       }
     };
 
-    updateWalletAddress();
-  }, [connected, wallet, telegramId]);
+    initializeWebApp();
+  }, []);
+
+  useEffect(() => {
+    const checkWalletConnection = async () => {
+      if (tonConnectUI.account?.address) {
+        await handleWalletConnection(tonConnectUI.account.address);
+      } else {
+        handleWalletDisconnection();
+      }
+    };
+
+    if (userData) {
+      checkWalletConnection();
+    }
+
+    const unsubscribe = tonConnectUI.onStatusChange(async (wallet) => {
+      if (wallet) {
+        await handleWalletConnection(wallet.account.address);
+      } else {
+        handleWalletDisconnection();
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [tonConnectUI, handleWalletConnection, handleWalletDisconnection, userData]);
+
+  const handleWalletAction = async () => {
+    if (tonConnectUI.connected) {
+      setIsLoading(true);
+      await tonConnectUI.disconnect();
+    } else {
+      await tonConnectUI.openModal();
+    }
+  };
+
+  const formatAddress = (address: string) => {
+    const tempAddress = Address.parse(address).toString();
+    return `${tempAddress.slice(0, 4)}...${tempAddress.slice(-4)}`;
+  };
 
   const calculateAllocation = async () => {
-    if (!telegramId) return;
+    if (!userData?.id) return;
 
     setIsLoading(true);
     
@@ -55,7 +126,7 @@ export default function SnapshotPage() {
       await new Promise(resolve => setTimeout(resolve, 7000));
 
       // Get user info from database
-      const response = await fetch(`/api/user?telegram_id=${telegramId}`);
+      const response = await fetch(`/api/user?telegram_id=${userData.id}`);
       const data = await response.json();
       
       if (!data.success) {
@@ -92,7 +163,7 @@ export default function SnapshotPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          telegram_id: telegramId,
+          telegram_id: userData.id.toString(),
           airdropped_value: baseAllocation
         })
       });
@@ -135,24 +206,36 @@ export default function SnapshotPage() {
           <p className="text-yellow-300 mb-6">
             Connect wallet again to see your allocation
           </p>
-          {!connected ? (
-            <button
-              onClick={connect}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-all transform hover:scale-105"
-            >
-              Connect Wallet
-            </button>
-          ) : (
-            <div className="bg-green-800 rounded-lg p-4 break-all">
-              <p className="text-green-300 text-sm">Connected:</p>
-              <p className="text-white text-xs">{wallet}</p>
-            </div>
-          )}
+          
+          <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6">
+            {tonWalletAddress ? (
+              <div className="text-center">
+                <p className="text-lg mb-4 text-white">
+                  Connected: {formatAddress(tonWalletAddress)}
+                </p>
+                <button
+                  onClick={handleWalletAction}
+                  className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition-all transform hover:scale-105"
+                  disabled={isLoading}
+                >
+                  Disconnect Wallet
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleWalletAction}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-all transform hover:scale-105"
+                disabled={isLoading}
+              >
+                Connect TON Wallet
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Allocation Display */}
-        {connected && (
-          <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 text-center">
+        {tonWalletAddress && (
+          <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 text-center mt-4">
             {isLoading ? (
               <div className="flex flex-col items-center space-y-4">
                 <LoaderCircle className="animate-spin text-yellow-400 w-12 h-12" />
@@ -161,7 +244,7 @@ export default function SnapshotPage() {
             ) : allocation === null ? (
               <button
                 onClick={calculateAllocation}
-                className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition-all transform hover:scale-105 flex items-center space-x-2"
+                className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition-all transform hover:scale-105 flex items-center justify-center space-x-2"
               >
                 <Gift className="w-6 h-6" />
                 <span>View Your Allocation</span>
@@ -172,7 +255,7 @@ export default function SnapshotPage() {
                   Your Airdrop Allocation
                 </h2>
                 <div className="text-4xl font-bold text-white">
-                  {allocation.toLocaleString()} $SANTA
+                  {allocation.toLocaleString()} $TGOLD
                 </div>
                 <p className="text-green-400 text-sm">
                   Successfully calculated and stored! 🎉

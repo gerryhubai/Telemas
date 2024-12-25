@@ -33,42 +33,57 @@ export default function SnapshotPage() {
     }
   }, []);
 
-  const updateWallet = async () => {
-    const currentWallet = tonConnectUI.account?.address;
-    if (currentWallet && userData?.id) {
-      console.log('Updating wallet...', {
-        wallet: currentWallet,
-        telegramId: userData.id,
-        isInitialLoad,
-      });
-
-      try {
-        const response = await fetch('/api/user', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            telegram_id: userData.id.toString(),
-            wallet_address: currentWallet,
-          }),
+  // Handle wallet updates
+  useEffect(() => {
+    const updateWallet = async () => {
+      const currentWallet = tonConnectUI.account?.address;
+      
+      if (currentWallet && userData?.id) {
+        console.log('Updating wallet...', {
+          wallet: currentWallet,
+          telegramId: userData.id,
+          isInitialLoad
         });
 
-        if (!response.ok) {
-          throw new Error('Failed to update wallet');
-        }
+        try {
+          const response = await fetch('/api/user', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              telegram_id: userData.id.toString(),
+              wallet_address: currentWallet,
+            }),
+          });
 
-        console.log('Wallet update successful');
-      } catch (err) {
-        console.error('Wallet update failed:', err);
-        setError('Failed to update wallet');
+          if (!response.ok) {
+            throw new Error('Failed to update wallet');
+          }
+
+          const result = await response.json();
+          console.log('Wallet update result:', result);
+          
+          setTonWalletAddress(currentWallet);
+        } catch (err) {
+          console.error('Wallet update failed:', err);
+          setError('Failed to update wallet');
+        }
+      } else if (!currentWallet) {
+        setTonWalletAddress(null);
       }
+    };
+
+    // Update on initial load or wallet changes
+    if (isInitialLoad || tonConnectUI.connected) {
+      updateWallet();
+      setIsInitialLoad(false);
     }
-  };
+  }, [tonConnectUI.account, userData, isInitialLoad]);
 
   // Subscribe to wallet status changes
   useEffect(() => {
-    const unsubscribe = tonConnectUI.onStatusChange(() => {
+    const unsubscribe = tonConnectUI.onStatusChange(async (wallet) => {
       setIsInitialLoad(true); // Trigger a new update cycle
     });
 
@@ -94,11 +109,11 @@ export default function SnapshotPage() {
     if (!userData?.id) return;
 
     setIsLoading(true);
-
+    
     try {
       const response = await fetch(`/api/user?telegram_id=${userData.id}`);
       const data = await response.json();
-
+      
       if (!data.success) {
         setAllocation(0);
         return;
@@ -107,29 +122,25 @@ export default function SnapshotPage() {
       const userInfo = data.userInfo;
       const createdAt = new Date(userInfo.created_at);
       const coins = parseInt(localStorage.getItem('coins') || '0');
-
+      
       // Base allocation calculation
       let baseAllocation: number;
       const now = new Date();
-      const daysSinceCreation = Math.floor(
-        (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24)
-      );
+      const daysSinceCreation = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
 
       if (daysSinceCreation > 30) {
-        baseAllocation = Math.min(25000 + coins * 0.1, 50000);
+        baseAllocation = Math.min(25000 + (coins * 0.1), 50000);
       } else if (daysSinceCreation > 14) {
-        baseAllocation = Math.min(15000 + coins * 0.08, 30000);
+        baseAllocation = Math.min(15000 + (coins * 0.08), 30000);
       } else {
-        baseAllocation = Math.min(10000 + coins * 0.05, 20000);
+        baseAllocation = Math.min(10000 + (coins * 0.05), 20000);
       }
 
       // Add bonus for upgraded cards (3 tokens per card)
       try {
-        const collectedCards = JSON.parse(
-          localStorage.getItem('collectedCards') || '{}'
-        );
+        const collectedCards = JSON.parse(localStorage.getItem('collectedCards') || '{}');
         const cardCount = Object.keys(collectedCards).length;
-        baseAllocation += cardCount * 3; // 3 tokens per card
+        baseAllocation += cardCount * 3;  // 3 tokens per card
       } catch (e) {
         console.error('Error parsing collected cards:', e);
       }
@@ -142,8 +153,8 @@ export default function SnapshotPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           telegram_id: userData.id.toString(),
-          airdropped_value: finalAllocation,
-        }),
+          airdropped_value: finalAllocation
+        })
       });
 
       if (!updateResponse.ok) {
@@ -151,9 +162,6 @@ export default function SnapshotPage() {
       }
 
       setAllocation(finalAllocation);
-
-      // Update wallet address only after allocation is calculated
-      setTonWalletAddress(tonConnectUI.account?.address || null);
     } catch (error) {
       console.error('Error calculating allocation:', error);
       setAllocation(null);
@@ -173,7 +181,7 @@ export default function SnapshotPage() {
               left: `${Math.random() * 100}%`,
               top: `-20px`,
               animation: `fall ${5 + Math.random() * 10}s linear infinite`,
-              animationDelay: `${-Math.random() * 5}s`,
+              animationDelay: `${-Math.random() * 5}s`
             }}
           >
             ❄
@@ -186,7 +194,7 @@ export default function SnapshotPage() {
           <h1 className="text-3xl font-bold text-white mb-4">
             🎄 Christmas Airdrop Snapshot 🎄
           </h1>
-
+          
           <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6">
             {tonWalletAddress ? (
               <div className="text-center">

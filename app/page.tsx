@@ -18,9 +18,8 @@ export default function SnapshotPage() {
   const [allocation, setAllocation] = useState<number | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-  // Initialize user data
+  // Initialize user data only
   useEffect(() => {
     try {
       const user = WebApp.initDataUnsafe.user as UserData | undefined;
@@ -33,62 +32,43 @@ export default function SnapshotPage() {
     }
   }, []);
 
-  // Handle wallet updates
+  // Update wallet address state when connection changes
   useEffect(() => {
-    const updateWallet = async () => {
-      const currentWallet = tonConnectUI.account?.address;
-      
-      if (currentWallet && userData?.id) {
-        console.log('Updating wallet...', {
-          wallet: currentWallet,
-          telegramId: userData.id,
-          isInitialLoad
-        });
+    const walletAddress = tonConnectUI.account?.address || null;
+    setTonWalletAddress(walletAddress);
+  }, [tonConnectUI.account]);
 
-        try {
-          const response = await fetch('/api/user', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              telegram_id: userData.id.toString(),
-              wallet_address: currentWallet,
-            }),
-          });
-
-          if (!response.ok) {
-            throw new Error('Failed to update wallet');
-          }
-
-          const result = await response.json();
-          console.log('Wallet update result:', result);
-          
-          setTonWalletAddress(currentWallet);
-        } catch (err) {
-          console.error('Wallet update failed:', err);
-          setError('Failed to update wallet');
-        }
-      } else if (!currentWallet) {
-        setTonWalletAddress(null);
-      }
-    };
-
-    // Update on initial load or wallet changes
-    if (isInitialLoad || tonConnectUI.connected) {
-      updateWallet();
-      setIsInitialLoad(false);
+  // Function to update wallet in database - will only be called when we have valid data
+  const updateWalletInDatabase = async (address: string) => {
+    if (!userData?.id) {
+      console.log('No user data available yet');
+      return;
     }
-  }, [tonConnectUI.account, userData, isInitialLoad]);
 
-  // Subscribe to wallet status changes
-  useEffect(() => {
-    const unsubscribe = tonConnectUI.onStatusChange(async (wallet) => {
-      setIsInitialLoad(true); // Trigger a new update cycle
-    });
+    try {
+      console.log('Updating wallet in database:', address);
+      const response = await fetch('/api/user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          telegram_id: userData.id.toString(),
+          wallet_address: address,
+        }),
+      });
 
-    return () => unsubscribe();
-  }, [tonConnectUI]);
+      if (!response.ok) {
+        throw new Error('Failed to update wallet');
+      }
+
+      const result = await response.json();
+      console.log('Wallet update successful:', result);
+    } catch (err) {
+      console.error('Wallet update failed:', err);
+      setError('Failed to update wallet');
+    }
+  };
 
   const handleWalletAction = async () => {
     if (tonConnectUI.connected) {
@@ -101,8 +81,17 @@ export default function SnapshotPage() {
   };
 
   const formatAddress = (address: string) => {
-    const tempAddress = Address.parse(address).toString();
-    return `${tempAddress.slice(0, 4)}...${tempAddress.slice(-4)}`;
+    try {
+      const tempAddress = Address.parse(address).toString();
+      
+      // After successful format, update the database
+      updateWalletInDatabase(address);
+      
+      return `${tempAddress.slice(0, 4)}...${tempAddress.slice(-4)}`;
+    } catch (error) {
+      console.error('Error formatting address:', error);
+      return '';
+    }
   };
 
   const calculateAllocation = async () => {

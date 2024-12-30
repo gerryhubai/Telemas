@@ -6,7 +6,7 @@ export async function GET() {
     // Query to fetch all telegram IDs
     const result = await sql`
       SELECT telegram_id
-      FROM users WHERE airdropped_balance > 0;
+      FROM users WHERE airdropped_value > 0;
     `;
 
     // Extract telegram IDs and join them into a comma-separated string
